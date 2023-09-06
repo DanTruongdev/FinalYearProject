@@ -15,8 +15,8 @@ namespace OnlineShopping.Models.Purchase
         [NotMapped]
         public double Cost { get; set; }
         //
-        public Order Order { get; set; }
-        public CustomizeFurniture CustomizeFurniture { get; set; }
+        public virtual Order Order { get; set; }
+        public virtual CustomizeFurniture CustomizeFurniture { get; set; }
 
     }
 }

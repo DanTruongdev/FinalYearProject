@@ -12,7 +12,7 @@ namespace OnlineShopping.Models.Warehouse
         [Required]
         public int Available { get; set; }
         //
-        public Repository Repository { get; set; }
-        public FurnitureSpecification FurnitureSpecification { get; set; }
+        public virtual Repository Repository { get; set; }
+        public virtual FurnitureSpecification FurnitureSpecification { get; set; }
     }
 }

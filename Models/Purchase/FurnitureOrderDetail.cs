@@ -13,10 +13,9 @@ namespace OnlineShopping.Models.Purchase
         [Required]
         public int FurnitureSpecificationId { get; set; }
         public int Quantity { get; set; } = 1;
-        [NotMapped]
         public double Cost { get; set; }
         //
-        public Order Order { get; set; }
-        public FurnitureSpecification FurnitureSpecification { get; set; }
+        public virtual Order Order { get; set; }
+        public virtual FurnitureSpecification FurnitureSpecification { get; set; }
     }
 }

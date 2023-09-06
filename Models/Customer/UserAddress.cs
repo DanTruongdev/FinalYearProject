@@ -9,7 +9,7 @@ namespace OnlineShopping.Models.Customer
         public int AddressId { get; set; }
         public string AddressType { get; set; }
         //
-        public User User { get; set; }
-        public Address Address { get; set; }
+        public virtual User User { get; set; }
+        public virtual Address Address { get; set; }
     }
 }

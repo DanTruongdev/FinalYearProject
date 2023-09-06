@@ -11,7 +11,7 @@ namespace OnlineShopping.Models.Funiture
             ErrorMessage = "Category cannot be less than 2 characters or exceed 20 characters")]
         public string CategoryName { get; set; }
         ///
-        public ICollection<Furniture> Furnitures { get; set;}
-        public ICollection<Requirement> Requirements { get; set; }
+        public virtual ICollection<Furniture> Furnitures { get; set;}
+        public virtual ICollection<CustomizeFurniture> CustomizeFurnitures { get; set; }
     }
 }

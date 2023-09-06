@@ -26,10 +26,14 @@ namespace OnlineShopping.Models
           ErrorMessage = "Address cannot be less than 2 characters or exceed 20 characters")]
         public string Provine { get; set; }
         public string AddressOwner { get; set; }
+        public override string ToString()
+        {
+            return $"{Street}, {Commune}, {District}, {Provine}";
+        }
         //
-        public Suplier? Suplier { get; set; }   
-        public Repository? Repository { get; set; }
-        public ICollection<UserAddress>? UserAddresses { get; set; }
+        public virtual Suplier? Suplier { get; set; }   
+        public virtual Repository? Repository { get; set; }
+        public virtual ICollection<UserAddress>? UserAddresses { get; set; }
      
     }
 }

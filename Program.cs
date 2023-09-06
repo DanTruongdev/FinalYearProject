@@ -1,6 +1,5 @@
-using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -16,12 +15,22 @@ var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
 //Allow Cross origin for API
+builder.Services.AddCors(p => p.AddPolicy(name: "corsapp", builder =>
+{
+    builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+}));
 
+//HttpContext
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+});
 
 //For Entity Framework
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(
-                    configuration.GetConnectionString("DefaultConnection")));
+     options.UseLazyLoadingProxies()
+     .UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+          
 //For Identity Framework
 builder.Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -50,6 +59,7 @@ builder.Services.AddAuthentication(options =>
         googleOptions.ClientId = configuration["GoogleAuthentication:ClientID"];
         googleOptions.ClientSecret = configuration["GoogleAuthentication:ClientSecret"];
     }
+    
 );
 
 
@@ -79,12 +89,10 @@ var phoneNumsConfig = configuration.GetSection("SmsConfiguration").Get<SmsConfig
 builder.Services.AddSingleton(phoneNumsConfig);
 builder.Services.AddScoped<ISMSService, SmsService>();
 
-builder.Services.AddScoped<IHandleFileService, HandleFileService>();
-
 //Maximum upload file size
 builder.WebHost.ConfigureKestrel(options =>
-    options.Limits.MaxRequestBodySize = 512*1024*1024
-);
+    options.Limits.MaxRequestBodySize = 5*1024*1024
+);;
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -129,13 +137,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseCors(); 
-app.UseHttpsRedirection();
-
+app.UseForwardedHeaders();
+app.UseRouting();
+app.UseCors("corsapp"); 
+//app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-
-
 app.MapControllers();
 app.MapHub<SignalHub>("/signalhub");
 app.Run();

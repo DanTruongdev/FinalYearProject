@@ -1,5 +1,5 @@
 ﻿using OnlineShopping.Models.Customer;
-using OnlineShopping.Models.Gallary;
+using OnlineShopping.Models.Gallery;
 using OnlineShopping.Models.Purchase;
 using OnlineShopping.Models.Warehouse;
 using System.ComponentModel.DataAnnotations;
@@ -26,13 +26,13 @@ namespace OnlineShopping.Models.Funiture
         public double Price { get; set; }
         public string Description { get; set; }
         ////
-        public Furniture Furniture { get; set; }
-        public Color? Color { get; set; }
-        public Wood? Wood { get; set; }
-        public ICollection<Attachment> Attachment { get; set; }
-        public ICollection<FurnitureRepository> FurnitureRepositories { get; set; }
-        public ICollection<Feedback> Feedbacks { get; set; }
-        public ICollection<CartDetail> CartDetails { get; set; }
-        public ICollection<FurnitureOrderDetail> FurnitureOrderDetails { get; set; }
+        public virtual Furniture Furniture { get; set; }
+        public virtual Color? Color { get; set; }
+        public virtual Wood? Wood { get; set; }
+        public virtual ICollection<FurnitureSpecificationAttachment> Attachments { get; set; }
+        public virtual ICollection<FurnitureRepository> FurnitureRepositories { get; set; }
+        public virtual ICollection<Feedback> Feedbacks { get; set; }
+        public virtual ICollection<CartDetail> CartDetails { get; set; }
+        public virtual ICollection<FurnitureOrderDetail> FurnitureOrderDetails { get; set; }
     }
 }

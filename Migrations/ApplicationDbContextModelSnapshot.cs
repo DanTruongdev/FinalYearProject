@@ -410,6 +410,9 @@ namespace OnlineShopping.Migrations
                     b.Property<int>("FurnitureSpecificationId")
                         .HasColumnType("int");
 
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
                     b.Property<int>("VoteStar")
                         .HasColumnType("int");
 
@@ -419,19 +422,9 @@ namespace OnlineShopping.Migrations
 
                     b.HasIndex("FurnitureSpecificationId");
 
-                    b.ToTable("Feedbacks");
+                    b.HasIndex("OrderId");
 
-                    b.HasData(
-                        new
-                        {
-                            FeedbackId = 1,
-                            Anonymous = false,
-                            Content = "This is the testing feedback",
-                            CreationDate = new DateTime(2023, 8, 7, 11, 41, 30, 128, DateTimeKind.Local).AddTicks(7224),
-                            CustomerId = "1",
-                            FurnitureSpecificationId = 1,
-                            VoteStar = 5
-                        });
+                    b.ToTable("Feedbacks");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Customer.UserAddress", b =>
@@ -461,13 +454,13 @@ namespace OnlineShopping.Migrations
                         });
                 });
 
-            modelBuilder.Entity("OnlineShopping.Models.Customer.WarrantySchedule", b =>
+            modelBuilder.Entity("OnlineShopping.Models.Customer.Warranty", b =>
                 {
-                    b.Property<int>("WarrantyScheduleId")
+                    b.Property<int>("WarrantyId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("WarrantyScheduleId"), 1L, 1);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("WarrantyId"), 1L, 1);
 
                     b.Property<DateTime?>("EstimatedTime")
                         .HasColumnType("datetime2");
@@ -489,13 +482,13 @@ namespace OnlineShopping.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.HasKey("WarrantyScheduleId");
+                    b.HasKey("WarrantyId");
 
                     b.HasIndex("OrderId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("WarrantySchedules");
+                    b.ToTable("Warranties");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.Category", b =>
@@ -601,22 +594,53 @@ namespace OnlineShopping.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CustomizeFurnitureId"), 1L, 1);
 
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ColorId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<double?>("ExpectedPrice")
+                    b.Property<string>("CustomizeFurnitureName")
                         .IsRequired()
-                        .HasMaxLength(10)
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("DesiredCompletionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("Height")
                         .HasColumnType("float");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<double>("Length")
+                        .HasColumnType("float");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Width")
+                        .HasColumnType("float");
+
+                    b.Property<int>("WoodId")
+                        .HasColumnType("int");
 
                     b.HasKey("CustomizeFurnitureId");
 
+                    b.HasIndex("ColorId");
+
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("WoodId");
 
                     b.ToTable("CustomizeFurnitures");
                 });
@@ -830,60 +854,36 @@ namespace OnlineShopping.Migrations
                         });
                 });
 
-            modelBuilder.Entity("OnlineShopping.Models.Funiture.Requirement", b =>
+            modelBuilder.Entity("OnlineShopping.Models.Funiture.Result", b =>
                 {
-                    b.Property<int>("RequirementId")
+                    b.Property<int>("ResultId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequirementId"), 1L, 1);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ResultId"), 1L, 1);
 
-                    b.Property<int?>("CategoryId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ColorId")
-                        .HasColumnType("int");
+                    b.Property<DateTime?>("ActualCompletionDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("CustomizeFurnitureId")
                         .HasColumnType("int");
 
-                    b.Property<string>("CustomizeFurnitureName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<double?>("ExpectedPrice")
+                        .HasColumnType("float");
 
-                    b.Property<string>("Description")
+                    b.Property<string>("Reason")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("DesiredCompletionDate")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<double>("Height")
-                        .HasColumnType("float");
+                    b.HasKey("ResultId");
 
-                    b.Property<double>("Length")
-                        .HasColumnType("float");
+                    b.HasIndex("CustomizeFurnitureId")
+                        .IsUnique();
 
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<double>("Width")
-                        .HasColumnType("float");
-
-                    b.Property<int?>("WoodId")
-                        .HasColumnType("int");
-
-                    b.HasKey("RequirementId");
-
-                    b.HasIndex("CategoryId");
-
-                    b.HasIndex("ColorId");
-
-                    b.HasIndex("CustomizeFurnitureId");
-
-                    b.HasIndex("WoodId");
-
-                    b.ToTable("Requirements");
+                    b.ToTable("Results");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.Wood", b =>
@@ -921,7 +921,97 @@ namespace OnlineShopping.Migrations
                         });
                 });
 
-            modelBuilder.Entity("OnlineShopping.Models.Gallary.Attachment", b =>
+            modelBuilder.Entity("OnlineShopping.Models.Gallery.CustomizeFurnitureAttachment", b =>
+                {
+                    b.Property<int>("CustomizeFurnitureAttachmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CustomizeFurnitureAttachmentId"), 1L, 1);
+
+                    b.Property<string>("AttachmentName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CustomizeFurnitureId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("CustomizeFurnitureAttachmentId");
+
+                    b.HasIndex("CustomizeFurnitureId");
+
+                    b.ToTable("CustomizeFurnitureAttachments");
+                });
+
+            modelBuilder.Entity("OnlineShopping.Models.Gallery.FeedbackAttachment", b =>
+                {
+                    b.Property<int>("FeedbackAttachmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FeedbackAttachmentId"), 1L, 1);
+
+                    b.Property<string>("AttachmentName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("FeedbackId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("FeedbackAttachmentId");
+
+                    b.HasIndex("FeedbackId");
+
+                    b.ToTable("FeedbackAttachments");
+                });
+
+            modelBuilder.Entity("OnlineShopping.Models.Gallery.FurnitureSpecificationAttachment", b =>
+                {
+                    b.Property<int>("FurnitureSpecificationAttachemnetId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FurnitureSpecificationAttachemnetId"), 1L, 1);
+
+                    b.Property<string>("AttachmentName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("FurnitureSpecificationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("FurnitureSpecificationAttachemnetId");
+
+                    b.HasIndex("FurnitureSpecificationId");
+
+                    b.ToTable("FurnitureSpecificationAttachments");
+                });
+
+            modelBuilder.Entity("OnlineShopping.Models.Gallery.WarrantyAttachment", b =>
                 {
                     b.Property<int>("AttachmentId")
                         .ValueGeneratedOnAdd()
@@ -929,29 +1019,26 @@ namespace OnlineShopping.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AttachmentId"), 1L, 1);
 
-                    b.Property<string>("AttachmentFor")
+                    b.Property<string>("AttachmentName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("FeedbackId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ImageUrl")
+                    b.Property<string>("Path")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("LikedItemId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("VideoUrl")
+                    b.Property<string>("Type")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("WarrantyId")
+                        .HasColumnType("int");
 
                     b.HasKey("AttachmentId");
 
-                    b.HasIndex("FeedbackId");
+                    b.HasIndex("WarrantyId");
 
-                    b.HasIndex("LikedItemId");
-
-                    b.ToTable("Attachments");
+                    b.ToTable("WarrantyAttachments");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Purchase.Cart", b =>
@@ -1031,6 +1118,9 @@ namespace OnlineShopping.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderDetailId"), 1L, 1);
 
+                    b.Property<double>("Cost")
+                        .HasColumnType("float");
+
                     b.Property<int>("FurnitureSpecificationId")
                         .HasColumnType("int");
 
@@ -1061,16 +1151,29 @@ namespace OnlineShopping.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("DeliveryAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("PaymentId")
+                    b.Property<int>("PaymentId")
                         .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<double>("TotalCost")
+                        .HasColumnType("float");
 
                     b.Property<int?>("UsedPoint")
                         .HasColumnType("int");
@@ -1105,17 +1208,22 @@ namespace OnlineShopping.Migrations
                         new
                         {
                             PaymentId = 1,
-                            PaymentMethod = "Tranfer"
+                            PaymentMethod = "CASH"
                         },
                         new
                         {
                             PaymentId = 2,
-                            PaymentMethod = "Credit"
+                            PaymentMethod = "VNPAYQR"
                         },
                         new
                         {
                             PaymentId = 3,
-                            PaymentMethod = "Payment on delivery"
+                            PaymentMethod = "VNBANK"
+                        },
+                        new
+                        {
+                            PaymentId = 4,
+                            PaymentMethod = "INTBANK"
                         });
                 });
 
@@ -1155,7 +1263,7 @@ namespace OnlineShopping.Migrations
                             PointId = 1,
                             CustomerId = "1",
                             Description = "Create account successfully +500 points",
-                            History = new DateTime(2023, 8, 7, 11, 41, 30, 126, DateTimeKind.Local).AddTicks(3205),
+                            History = new DateTime(2023, 8, 29, 23, 21, 24, 352, DateTimeKind.Local).AddTicks(7238),
                             TotalPoint = 500
                         });
                 });
@@ -1308,6 +1416,9 @@ namespace OnlineShopping.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("MaterialImage")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("MaterialName")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -1423,7 +1534,7 @@ namespace OnlineShopping.Migrations
                             RepositoryId = 1,
                             AddressId = 1,
                             Capacity = 50.0,
-                            CreationDate = new DateTime(2023, 8, 7, 11, 41, 30, 128, DateTimeKind.Local).AddTicks(3286),
+                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 354, DateTimeKind.Local).AddTicks(1920),
                             RepositoryName = "Repository 1"
                         });
                 });
@@ -1442,6 +1553,9 @@ namespace OnlineShopping.Migrations
 
                     b.Property<string>("SuplierEmail")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SuplierImage")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SuplierName")
@@ -1502,6 +1616,9 @@ namespace OnlineShopping.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<DateTime?>("LatestUpdate")
+                        .HasColumnType("datetime2");
+
                     b.Property<double?>("Spent")
                         .HasColumnType("float");
 
@@ -1516,19 +1633,19 @@ namespace OnlineShopping.Migrations
                         {
                             Id = "1",
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "2ea440e8-c041-43b0-b26a-e0f7e74f3a42",
+                            ConcurrencyStamp = "cbd44045-0ca9-4237-99a1-24050eb8d7fd",
                             Email = "customer1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "customer1",
-                            PasswordHash = "AQAAAAEAACcQAAAAEMZJItrhCWGGyKAhZ2i1WAix5ifyUvIDyNObcsmyL6KvMPc8CFrd9ddBNv8I80r8OA==",
+                            PasswordHash = "AQAAAAEAACcQAAAAEBwU7Zn7BiLGn5y3guGnRzDczwUcbkZyUzmhdYP+SPwUCamBAYIoG4ROng3GEGGncQ==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "f75e657d-901a-47d9-8ea2-31f6f97dbd26",
+                            SecurityStamp = "17cad0b3-54bc-48d9-b3fb-d09f5a11bb5b",
                             TwoFactorEnabled = false,
                             UserName = "customer1",
                             Avatar = "customer.jpg",
-                            CreationDate = new DateTime(2023, 8, 7, 11, 41, 30, 100, DateTimeKind.Local).AddTicks(2189),
+                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6341),
                             Debit = 0.0,
                             DoB = new DateTime(2002, 3, 11, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Customer",
@@ -1541,19 +1658,19 @@ namespace OnlineShopping.Migrations
                         {
                             Id = "2",
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "e4056902-215e-4ed0-beba-4ff5aa7a1236",
+                            ConcurrencyStamp = "5fbe3b83-9d43-4d5b-bd4a-9e3644924bf9",
                             Email = "assistant1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "assistant1",
-                            PasswordHash = "AQAAAAEAACcQAAAAEIVtvmLBn4iEjrXE+JHudsJW6l16TceH6JqanhaQb3nTXwaeHIk1Ki+yWwCKNkk44Q==",
+                            PasswordHash = "AQAAAAEAACcQAAAAEPPPkbBtKoLrpwFfcJwqFDfreD3pfyo1KYjXbWcw2sHxJwGnz7izrLBqmKbL2ApzDA==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "71b2cf87-f3af-4acc-8588-7d2bbf8c6045",
+                            SecurityStamp = "ff5fb428-ae2e-48b3-8b09-1846ee7d8cef",
                             TwoFactorEnabled = false,
                             UserName = "assistant1",
                             Avatar = "assistant.jpg",
-                            CreationDate = new DateTime(2023, 8, 7, 11, 41, 30, 100, DateTimeKind.Local).AddTicks(2212),
+                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6370),
                             Debit = 0.0,
                             DoB = new DateTime(2002, 8, 21, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Assistant",
@@ -1566,19 +1683,19 @@ namespace OnlineShopping.Migrations
                         {
                             Id = "3",
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "08d78758-5813-4300-a305-4dacc273194d",
+                            ConcurrencyStamp = "99d76af5-a13a-40ef-8f5b-20b6db043d1b",
                             Email = "manager1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "manager1",
-                            PasswordHash = "AQAAAAEAACcQAAAAEL8nSILZMst9x0BpOx6GmBRhHuELXBEjArfM0eDn88NTLFkrbk1MXMG+L6Hrz8tBkQ==",
+                            PasswordHash = "AQAAAAEAACcQAAAAEEJ7Gln/bW6asVktVGb1M9Kl5vNXbUeakE1ilgP0uj/w7ptVGOeMiOk0ksVHDXDzkg==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "952736d7-7669-4513-b699-4f0ff114e7b3",
+                            SecurityStamp = "351089ff-175f-4e37-a47e-aaef8cda35e3",
                             TwoFactorEnabled = false,
                             UserName = "manager1",
                             Avatar = "manager.jpg",
-                            CreationDate = new DateTime(2023, 8, 7, 11, 41, 30, 100, DateTimeKind.Local).AddTicks(2226),
+                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6382),
                             Debit = 0.0,
                             DoB = new DateTime(2000, 5, 12, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Manager",
@@ -1591,19 +1708,19 @@ namespace OnlineShopping.Migrations
                         {
                             Id = "4",
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "6b07bb44-2f1b-4871-aa0a-a7343fcab539",
+                            ConcurrencyStamp = "29f731f6-82f7-4761-a4a1-6983295c7997",
                             Email = "admin1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "admin1",
-                            PasswordHash = "AQAAAAEAACcQAAAAEPGlh+pkIEn2LyAt0MCdcmjBmjvnf/1kC4IGtumklyZ3GcHpjMCwlEKb170IpvvJ2g==",
+                            PasswordHash = "AQAAAAEAACcQAAAAEL2Q17L4gI0k1O7naEuvB9HjSf0jMV0ZfhvPJXxMQ9L1m56hK+AjLtBJd5vAwkpetQ==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "0c7bb796-9e6a-4c77-adf6-7a8a9b2e6803",
+                            SecurityStamp = "57749cf3-bc56-4b14-93a4-3b721d20e936",
                             TwoFactorEnabled = false,
                             UserName = "admin1",
                             Avatar = "admin.jpg",
-                            CreationDate = new DateTime(2023, 8, 7, 11, 41, 30, 100, DateTimeKind.Local).AddTicks(2236),
+                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6391),
                             Debit = 0.0,
                             DoB = new DateTime(2001, 7, 13, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Admin",
@@ -1690,9 +1807,17 @@ namespace OnlineShopping.Migrations
                         .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
+                    b.HasOne("OnlineShopping.Models.Purchase.Order", "Order")
+                        .WithMany("Feedbacks")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
                     b.Navigation("Customer");
 
                     b.Navigation("FurnitureSpecification");
+
+                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Customer.UserAddress", b =>
@@ -1714,16 +1839,16 @@ namespace OnlineShopping.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("OnlineShopping.Models.Customer.WarrantySchedule", b =>
+            modelBuilder.Entity("OnlineShopping.Models.Customer.Warranty", b =>
                 {
                     b.HasOne("OnlineShopping.Models.Purchase.Order", "Order")
-                        .WithMany("WarrantySchedules")
+                        .WithMany("Warranties")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
                     b.HasOne("OnlineShopping.Models.User", "User")
-                        .WithMany("WarrantySchedules")
+                        .WithMany("Warranties")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
@@ -1735,13 +1860,34 @@ namespace OnlineShopping.Migrations
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.CustomizeFurniture", b =>
                 {
+                    b.HasOne("OnlineShopping.Models.Funiture.Color", "Color")
+                        .WithMany("CustomizeFurnitures")
+                        .HasForeignKey("ColorId")
+                        .IsRequired();
+
                     b.HasOne("OnlineShopping.Models.User", "Customer")
-                        .WithMany("CustomizeFurniture")
+                        .WithMany("CustomizeFurnitures")
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
+                    b.HasOne("OnlineShopping.Models.Funiture.Category", "Category")
+                        .WithMany("CustomizeFurnitures")
+                        .HasForeignKey("WoodId")
+                        .IsRequired();
+
+                    b.HasOne("OnlineShopping.Models.Funiture.Wood", "Wood")
+                        .WithMany("CustomizeFurnitures")
+                        .HasForeignKey("WoodId")
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Color");
+
                     b.Navigation("Customer");
+
+                    b.Navigation("Wood");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.Furniture", b =>
@@ -1788,82 +1934,59 @@ namespace OnlineShopping.Migrations
                     b.Navigation("Wood");
                 });
 
-            modelBuilder.Entity("OnlineShopping.Models.Funiture.Requirement", b =>
+            modelBuilder.Entity("OnlineShopping.Models.Funiture.Result", b =>
                 {
-                    b.HasOne("OnlineShopping.Models.Funiture.Category", "Category")
-                        .WithMany("Requirements")
-                        .HasForeignKey("CategoryId");
-
-                    b.HasOne("OnlineShopping.Models.Funiture.Color", "Color")
-                        .WithMany("Requirements")
-                        .HasForeignKey("ColorId");
-
                     b.HasOne("OnlineShopping.Models.Funiture.CustomizeFurniture", "CustomizeFurniture")
-                        .WithMany("Requirements")
+                        .WithOne("Result")
+                        .HasForeignKey("OnlineShopping.Models.Funiture.Result", "CustomizeFurnitureId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
+                    b.Navigation("CustomizeFurniture");
+                });
+
+            modelBuilder.Entity("OnlineShopping.Models.Gallery.CustomizeFurnitureAttachment", b =>
+                {
+                    b.HasOne("OnlineShopping.Models.Funiture.CustomizeFurniture", "CustomizeFurniture")
+                        .WithMany("Attachments")
                         .HasForeignKey("CustomizeFurnitureId")
                         .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
-                    b.HasOne("OnlineShopping.Models.Funiture.Wood", "Wood")
-                        .WithMany("Requirements")
-                        .HasForeignKey("WoodId");
-
-                    b.Navigation("Category");
-
-                    b.Navigation("Color");
-
                     b.Navigation("CustomizeFurniture");
-
-                    b.Navigation("Wood");
                 });
 
-            modelBuilder.Entity("OnlineShopping.Models.Gallary.Attachment", b =>
+            modelBuilder.Entity("OnlineShopping.Models.Gallery.FeedbackAttachment", b =>
                 {
                     b.HasOne("OnlineShopping.Models.Customer.Feedback", "Feedback")
-                        .WithMany()
-                        .HasForeignKey("FeedbackId");
-
-                    b.HasOne("OnlineShopping.Models.Funiture.FurnitureSpecification", "FurnitureSpecification")
-                        .WithMany("Attachment")
-                        .HasForeignKey("LikedItemId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
-                        .IsRequired();
-
-                    b.HasOne("OnlineShopping.Models.Warehouse.Material", "Material")
-                        .WithMany("Attachments")
-                        .HasForeignKey("LikedItemId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
-                        .IsRequired();
-
-                    b.HasOne("OnlineShopping.Models.Funiture.Requirement", "Requirement")
-                        .WithMany("Attachments")
-                        .HasForeignKey("LikedItemId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
-                        .IsRequired();
-
-                    b.HasOne("OnlineShopping.Models.Warehouse.Suplier", "Suplier")
-                        .WithMany("Attachments")
-                        .HasForeignKey("LikedItemId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
-                        .IsRequired();
-
-                    b.HasOne("OnlineShopping.Models.Customer.WarrantySchedule", "WarrantySchedule")
-                        .WithMany("Attachments")
-                        .HasForeignKey("LikedItemId")
+                        .WithMany("Attachements")
+                        .HasForeignKey("FeedbackId")
                         .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
                     b.Navigation("Feedback");
+                });
+
+            modelBuilder.Entity("OnlineShopping.Models.Gallery.FurnitureSpecificationAttachment", b =>
+                {
+                    b.HasOne("OnlineShopping.Models.Funiture.FurnitureSpecification", "FurnitureSpecification")
+                        .WithMany("Attachments")
+                        .HasForeignKey("FurnitureSpecificationId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
 
                     b.Navigation("FurnitureSpecification");
+                });
 
-                    b.Navigation("Material");
+            modelBuilder.Entity("OnlineShopping.Models.Gallery.WarrantyAttachment", b =>
+                {
+                    b.HasOne("OnlineShopping.Models.Customer.Warranty", "Warranty")
+                        .WithMany("Attachments")
+                        .HasForeignKey("WarrantyId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
 
-                    b.Navigation("Requirement");
-
-                    b.Navigation("Suplier");
-
-                    b.Navigation("WarrantySchedule");
+                    b.Navigation("Warranty");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Purchase.Cart", b =>
@@ -1942,7 +2065,8 @@ namespace OnlineShopping.Migrations
 
                     b.HasOne("OnlineShopping.Models.Purchase.Payment", "Payment")
                         .WithMany("Orders")
-                        .HasForeignKey("PaymentId");
+                        .HasForeignKey("PaymentId")
+                        .IsRequired();
 
                     b.Navigation("Customer");
 
@@ -2102,16 +2226,21 @@ namespace OnlineShopping.Migrations
                     b.Navigation("UserAddresses");
                 });
 
-            modelBuilder.Entity("OnlineShopping.Models.Customer.WarrantySchedule", b =>
+            modelBuilder.Entity("OnlineShopping.Models.Customer.Feedback", b =>
+                {
+                    b.Navigation("Attachements");
+                });
+
+            modelBuilder.Entity("OnlineShopping.Models.Customer.Warranty", b =>
                 {
                     b.Navigation("Attachments");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.Category", b =>
                 {
-                    b.Navigation("Furnitures");
+                    b.Navigation("CustomizeFurnitures");
 
-                    b.Navigation("Requirements");
+                    b.Navigation("Furnitures");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.Collection", b =>
@@ -2121,16 +2250,19 @@ namespace OnlineShopping.Migrations
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.Color", b =>
                 {
-                    b.Navigation("FurnitureSpecifications");
+                    b.Navigation("CustomizeFurnitures");
 
-                    b.Navigation("Requirements");
+                    b.Navigation("FurnitureSpecifications");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.CustomizeFurniture", b =>
                 {
+                    b.Navigation("Attachments");
+
                     b.Navigation("CustomizeFurnitureOrderDetails");
 
-                    b.Navigation("Requirements");
+                    b.Navigation("Result")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.Furniture", b =>
@@ -2142,7 +2274,7 @@ namespace OnlineShopping.Migrations
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.FurnitureSpecification", b =>
                 {
-                    b.Navigation("Attachment");
+                    b.Navigation("Attachments");
 
                     b.Navigation("CartDetails");
 
@@ -2158,16 +2290,11 @@ namespace OnlineShopping.Migrations
                     b.Navigation("Furnitures");
                 });
 
-            modelBuilder.Entity("OnlineShopping.Models.Funiture.Requirement", b =>
-                {
-                    b.Navigation("Attachments");
-                });
-
             modelBuilder.Entity("OnlineShopping.Models.Funiture.Wood", b =>
                 {
-                    b.Navigation("FurnitureSpecification");
+                    b.Navigation("CustomizeFurnitures");
 
-                    b.Navigation("Requirements");
+                    b.Navigation("FurnitureSpecification");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Purchase.Cart", b =>
@@ -2179,9 +2306,11 @@ namespace OnlineShopping.Migrations
                 {
                     b.Navigation("CustomizeFurnitureOrderDetails");
 
+                    b.Navigation("Feedbacks");
+
                     b.Navigation("FurnitureOrderDetails");
 
-                    b.Navigation("WarrantySchedules");
+                    b.Navigation("Warranties");
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Purchase.Payment", b =>
@@ -2201,8 +2330,6 @@ namespace OnlineShopping.Migrations
 
             modelBuilder.Entity("OnlineShopping.Models.Warehouse.Material", b =>
                 {
-                    b.Navigation("Attachments");
-
                     b.Navigation("ImportDetails");
 
                     b.Navigation("MaterialRepositories");
@@ -2219,8 +2346,6 @@ namespace OnlineShopping.Migrations
 
             modelBuilder.Entity("OnlineShopping.Models.Warehouse.Suplier", b =>
                 {
-                    b.Navigation("Attachments");
-
                     b.Navigation("Materials");
                 });
 
@@ -2231,7 +2356,7 @@ namespace OnlineShopping.Migrations
                     b.Navigation("Cart")
                         .IsRequired();
 
-                    b.Navigation("CustomizeFurniture");
+                    b.Navigation("CustomizeFurnitures");
 
                     b.Navigation("Feedbacks");
 
@@ -2243,7 +2368,7 @@ namespace OnlineShopping.Migrations
 
                     b.Navigation("UserAddresses");
 
-                    b.Navigation("WarrantySchedules");
+                    b.Navigation("Warranties");
 
                     b.Navigation("WishList")
                         .IsRequired();
