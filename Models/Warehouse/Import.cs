@@ -18,8 +18,8 @@ namespace OnlineShopping.Models.Warehouse
         public double TotalCost { get; set; }
         public string Status { get; set; }
         //
-        public ICollection<ImportDetail> ImportDetails { get; set; }
-        public Repository Repository { get; set; }
-        public User User { get; set; }
+        public virtual ICollection<ImportDetail> ImportDetails { get; set; }
+        public virtual Repository Repository { get; set; }
+        public virtual User User { get; set; }
     }
 }
