@@ -11,12 +11,12 @@ namespace OnlineShopping.Models.Purchase
         [Required]
         public int CartId { get; set; }
         [Required]
-        public int FurnitureSpecificationId { get; set; }
+        public string FurnitureSpecificationId { get; set; }
         public int Quantity { get; set; } 
         [NotMapped]
         public double Cost { get; set; }
         //
-        public Cart Cart { get; set; }
-        public FurnitureSpecification FurnitureSpecifition { get; set; }
+        public virtual Cart Cart { get; set; }
+        public virtual FurnitureSpecification FurnitureSpecifition { get; set; }
     }
 }

@@ -10,8 +10,8 @@ namespace OnlineShopping.Models.Purchase
         [Required]
         public string CustomerId { get; set; }
         //
-        public User Customer { get; set; }
-        public ICollection<WishListDetail> WishListDetails { get; set;}
+        public virtual User Customer { get; set; }
+        public virtual ICollection<WishListDetail> WishListDetails { get; set;}
       
     }
 }
