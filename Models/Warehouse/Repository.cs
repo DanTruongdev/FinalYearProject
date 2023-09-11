@@ -15,9 +15,9 @@ namespace OnlineShopping.Models.Warehouse
         public double Capacity { get; set; }
         public DateTime CreationDate { get; set; }
         //
-        public Address? Address { get; set; }
-        public ICollection<Import> Imports { get; set; }
-        public ICollection<FurnitureRepository>? FurnitureRepositories { get; set; }
-        public ICollection<MaterialRepository>? MaterialRepositories { get; set; }
+        public virtual Address? Address { get; set; }
+        public virtual ICollection<Import> Imports { get; set; }
+        public virtual ICollection<FurnitureRepository>? FurnitureRepositories { get; set; }
+        public virtual ICollection<MaterialRepository>? MaterialRepositories { get; set; }
     }
 }

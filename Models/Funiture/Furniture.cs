@@ -20,11 +20,11 @@ namespace OnlineShopping.Models.Funiture
         public int Sold { get; set; } = 0;
         public double VoteStar { get; set; }
         //
-        public Category? Category { get; set; }
-        public Label? Label { get; set; }
-        public Collection? Collection { get; set; }
-        public ICollection<FurnitureSpecification> FurnitureSpecifications { get; set; }           
-        public ICollection<WishListDetail>? WishListDetails { get; set; }
+        public virtual Category? Category { get; set; }
+        public virtual  Label? Label { get; set; }
+        public virtual Collection? Collection { get; set; }
+        public virtual ICollection<FurnitureSpecification> FurnitureSpecifications { get; set; }           
+        public virtual ICollection<WishListDetail>? WishListDetails { get; set; }
       
     }
 }

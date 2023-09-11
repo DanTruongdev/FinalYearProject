@@ -19,7 +19,7 @@ namespace OnlineShopping.Models.Warehouse
         public double Cost { get; set; }
         public string Note { get; set; }
         //
-        public Import Import { get; set; }
-        public Material Material { get; set; }
+        public virtual Import Import { get; set; }
+        public virtual Material Material { get; set; }
     }
 }
