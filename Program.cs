@@ -20,7 +20,6 @@ builder.Services.AddCors(p => p.AddPolicy(name: "corsapp", builder =>
     builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
 }));
 
-
 //HttpContext
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -31,7 +30,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
      options.UseLazyLoadingProxies()
      .UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
-
+          
 //For Identity Framework
 builder.Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -56,18 +55,18 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]))
     };
 }).AddGoogle(googleOptions =>
-{
-    googleOptions.ClientId = configuration["GoogleAuthentication:ClientID"];
-    googleOptions.ClientSecret = configuration["GoogleAuthentication:ClientSecret"];
-}
-
+    {
+        googleOptions.ClientId = configuration["GoogleAuthentication:ClientID"];
+        googleOptions.ClientSecret = configuration["GoogleAuthentication:ClientSecret"];
+    }
+    
 );
 
 
 //Add config for required email
 builder.Services.Configure<IdentityOptions>(
     options => options.SignIn.RequireConfirmedEmail = true
-
+   
 );
 //Add config for required email
 builder.Services.Configure<IdentityOptions>(
@@ -77,7 +76,7 @@ builder.Services.Configure<IdentityOptions>(
 
 // Forgot password 
 builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
-    options.TokenLifespan = TimeSpan.FromMinutes(10));
+    options.TokenLifespan = TimeSpan.FromMinutes(10));   
 
 
 //Add Email Configs
@@ -92,8 +91,8 @@ builder.Services.AddScoped<ISMSService, SmsService>();
 
 //Maximum upload file size
 builder.WebHost.ConfigureKestrel(options =>
-    options.Limits.MaxRequestBodySize = 5 * 1024 * 1024
-); ;
+    options.Limits.MaxRequestBodySize = 5*1024*1024
+);;
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -140,7 +139,7 @@ if (app.Environment.IsDevelopment())
 }
 app.UseForwardedHeaders();
 app.UseRouting();
-app.UseCors("corsapp");
+app.UseCors("corsapp"); 
 //app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

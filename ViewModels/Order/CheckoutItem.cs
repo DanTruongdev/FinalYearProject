@@ -2,7 +2,7 @@
 {
     public class CheckoutItem
     {
-        public string ItemId { get; set; }   
+        public int FurnitureSpecificationId { get; set; }   
         public int Quantity { get; set; }       
     }
 }

@@ -11,8 +11,8 @@ namespace OnlineShopping.ViewModels.Address
         public string Street { get; set; }
         [Required]
         [StringLength(50, MinimumLength = 2,
-          ErrorMessage = "Ward cannot be less than 2 characters or exceed 50 characters")]
-        public string Ward { get; set; }
+          ErrorMessage = "Commune cannot be less than 2 characters or exceed 50 characters")]
+        public string Commune { get; set; }
         [Required]
         [StringLength(50, MinimumLength = 2,
           ErrorMessage = "District cannot be less than 2 characters or exceed 50 characters")]

@@ -7,7 +7,7 @@ namespace OnlineShopping.Models.Funiture
     public class CustomizeFurniture
     {
         [Key]
-        public string CustomizeFurnitureId { get; set; }
+        public int CustomizeFurnitureId { get; set; }
         [Required]
         public string CustomerId { get; set; }
         [Required]
@@ -36,10 +36,10 @@ namespace OnlineShopping.Models.Funiture
         public DateTime CreationDate { get; set; }
 
         //
-        public virtual Category Category { get; set; }
+        public virtual Category? Category { get; set; }
         public virtual ICollection<CustomizeFurnitureAttachment> Attachments { get; set; }
-        public virtual Color Color { get; set; }
-        public virtual Wood Wood { get; set; }
+        public virtual Color? Color { get; set; }
+        public virtual Wood? Wood { get; set; }
         public virtual User Customer { get; set; }
         public virtual ICollection<CustomizeFurnitureOrderDetail> CustomizeFurnitureOrderDetails { get; set; }
         public virtual Result Result { get; set; }

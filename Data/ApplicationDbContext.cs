@@ -119,7 +119,7 @@ namespace OnlineShopping.Data
                 Spent = 0,
                 Debit = 0,
                 CreationDate = DateTime.Now,
-                IsActivated = true
+                Status = "Activated"
             };
             var assistantTest = new User
             {
@@ -134,7 +134,7 @@ namespace OnlineShopping.Data
                 Gender = "Female",
                 Avatar = "assistant.jpg",
                 CreationDate = DateTime.Now,
-                IsActivated = true
+                Status = "Activated"
             };
             var managerTest = new User
             {
@@ -149,7 +149,7 @@ namespace OnlineShopping.Data
                 Gender = "Male",
                 Avatar = "manager.jpg",
                 CreationDate = DateTime.Now,
-                IsActivated = true
+                Status = "Activated"
             };
             var adminTest = new User
             {
@@ -164,7 +164,7 @@ namespace OnlineShopping.Data
                 Gender = "Male",
                 Avatar = "admin.jpg",
                 CreationDate = DateTime.Now,
-                IsActivated = true
+                Status = "Activated"
             };
             customerTest.PasswordHash = hashed.HashPassword(customerTest, "CustomerPass@1");
             assistantTest.PasswordHash = hashed.HashPassword(assistantTest, "AssistantPass@1");
@@ -328,7 +328,7 @@ namespace OnlineShopping.Data
             builder.Entity<FurnitureSpecification>().HasData(
                 new FurnitureSpecification()
                 {
-                    FurnitureSpecificationId = "FS-"+Guid.NewGuid().ToString(),
+                    FurnitureSpecificationId = 1,
                     FurnitureSpecificationName = "Yellow",
                     FurnitureId = 1,
                     Height = 50,
@@ -341,7 +341,7 @@ namespace OnlineShopping.Data
                 },
                 new FurnitureSpecification()
                 {
-                    FurnitureSpecificationId = "FS-"+Guid.NewGuid().ToString(),
+                    FurnitureSpecificationId = 2,
                     FurnitureSpecificationName = "Red",
                     FurnitureId = 1,
                     Height = 60,
@@ -354,7 +354,7 @@ namespace OnlineShopping.Data
                 },
                 new FurnitureSpecification()
                 {
-                    FurnitureSpecificationId = "FS-" + Guid.NewGuid().ToString(),
+                    FurnitureSpecificationId = 3,
                     FurnitureSpecificationName = "Purple",
                     FurnitureId = 2,
                     Height = 30,
@@ -367,7 +367,7 @@ namespace OnlineShopping.Data
                 },
                 new FurnitureSpecification()
                 {
-                    FurnitureSpecificationId = "FS-" + Guid.NewGuid().ToString(),
+                    FurnitureSpecificationId = 4,
                     FurnitureSpecificationName = "Black",
                     FurnitureId = 2,
                     Height = 50,
@@ -593,7 +593,19 @@ namespace OnlineShopping.Data
                 .HasOne<FurnitureSpecification>(fr => fr.FurnitureSpecification)
                 .WithMany(fs => fs.FurnitureRepositories)
                 .HasForeignKey(fr => fr.FurnitureSpecificationId)
-                .OnDelete(DeleteBehavior.ClientCascade);          
+                .OnDelete(DeleteBehavior.ClientCascade);
+            builder.Entity<FurnitureRepository>().HasData(
+                new FurnitureRepository()
+                {
+                    FurnitureSpecificationId = 1,
+                    RepositoryId = 1
+                },
+                 new FurnitureRepository()
+                 {
+                     FurnitureSpecificationId = 2,
+                     RepositoryId = 1
+                 }
+            );
         }
         private void SeedImport(ModelBuilder builder)
         {
@@ -719,7 +731,7 @@ namespace OnlineShopping.Data
                 {
                     AddressId = 1,
                     Street = "Street 1",
-                    Ward = "Commune 1",
+                    Commune = "Commune 1",
                     District = "District 1",
                     Provine = "Provine 1",
                     AddressOwner = "USER"
@@ -729,7 +741,7 @@ namespace OnlineShopping.Data
                  {
                      AddressId = 2,
                      Street = "Street 2",
-                     Ward = "Commune 2",
+                     Commune = "Commune 2",
                      District = "District 2",
                      Provine = "Provine 2",
                      AddressOwner = "REPOSITORY"
@@ -738,7 +750,7 @@ namespace OnlineShopping.Data
                 {
                     AddressId = 3,
                     Street = "Street 3",
-                    Ward = "Commune 3",
+                    Commune = "Commune 3",
                     District = "District 3",
                     Provine = "Provine 3",
                     AddressOwner = "SUPLIER"

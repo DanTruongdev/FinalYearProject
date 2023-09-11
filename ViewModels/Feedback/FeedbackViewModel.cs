@@ -7,7 +7,7 @@ namespace OnlineShopping.ViewModels.Feedback
         [Required]
         public int OrderId { get; set; }
         [Required]
-        public string FurnitureSpecificationId { get; set; }
+        public int FurnitureSpecificationId { get; set; }
         [StringLength(120, MinimumLength = 2,
           ErrorMessage = "Feedback cannot be less than 2 characters or exceed 120 characters")]
         public string Content { get; set; }

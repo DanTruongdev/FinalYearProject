@@ -23,7 +23,7 @@ namespace OnlineShopping.ViewModels
             if (files.Count > 0)
             {
                 if (!fileHandle.CheckFileExtension(files)) return new ValidationResult("File is not supported");
-                if (!fileHandle.CheckFileSize(files)) return new ValidationResult("Fize size must be less than 60MB");
+                if (!fileHandle.CheckFileSize(files)) return new ValidationResult("Fize size must be less than 5MB");
             }
              
             return ValidationResult.Success;

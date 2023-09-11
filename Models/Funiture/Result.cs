@@ -9,7 +9,7 @@ namespace OnlineShopping.Models.Funiture
         [Key]
         public int ResultId { get; set; }
         [Required]
-        public string CustomizeFurnitureId { get; set; }
+        public int CustomizeFurnitureId { get; set; }
         [AllowNull]  
         public DateTime? ActualCompletionDate { get; set; }
         [AllowNull]

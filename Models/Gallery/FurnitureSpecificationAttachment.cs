@@ -9,7 +9,7 @@ namespace OnlineShopping.Models.Gallery
         [Key]
         public int FurnitureSpecificationAttachemnetId { get; set; }
         [Required]
-        public string FurnitureSpecificationId { get; set; }
+        public int FurnitureSpecificationId { get; set; }
         [Required]
         public string AttachmentName { get; set; }
         [Required]

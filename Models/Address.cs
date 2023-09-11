@@ -16,7 +16,7 @@ namespace OnlineShopping.Models
         [Required]
         [StringLength(30, MinimumLength = 2,
           ErrorMessage = "Address cannot be less than 2 characters or exceed 30 characters")]
-        public string Ward { get; set; }
+        public string Commune { get; set; }
         [Required]
         [StringLength(20, MinimumLength = 2,
           ErrorMessage = "Address cannot be less than 2 characters or exceed 20 characters")]
@@ -28,7 +28,7 @@ namespace OnlineShopping.Models
         public string AddressOwner { get; set; }
         public override string ToString()
         {
-            return $"{Street}, {Ward}, {District}, {Provine}";
+            return $"{Street}, {Commune}, {District}, {Provine}";
         }
         //
         public virtual Suplier? Suplier { get; set; }   

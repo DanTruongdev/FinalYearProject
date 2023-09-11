@@ -28,7 +28,7 @@ namespace OnlineShopping.Models
         public double? Debit { get; set; } = 0;
         public DateTime CreationDate { get; set; }
         public DateTime? LatestUpdate { get; set; }
-        public bool IsActivated { get; set; }
+        public string Status { get; set; }
 
 
         // All
