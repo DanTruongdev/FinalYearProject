@@ -30,7 +30,7 @@ namespace OnlineShopping.Libraries.Services
         {
             foreach (var file in files)
             {
-                if (file.Length > 62914560) return false; // file size > 5mb
+                if (file.Length > 5242880) return false; // file size > 5mb
             }          
             return true;
         }

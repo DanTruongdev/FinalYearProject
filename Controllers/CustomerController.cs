@@ -26,14 +26,22 @@ using Microsoft.AspNet.SignalR.Hosting;
 using OnlineShopping.ViewModels.Order;
 using System.Net;
 using System.Web;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using MailKit.Search;
 using OnlineShopping.ViewModels.VNPAY;
+using System.Text.Json.Nodes;
+using Bogus.Bson;
 using Newtonsoft.Json.Linq;
+using Org.BouncyCastle.Crypto.Utilities;
 using OnlineShopping.ViewModels.Feedback;
+using static System.Net.Mime.MediaTypeNames;
 using OnlineShopping.Models.Gallery;
 using OnlineShopping.ViewModels.Address;
 using Castle.Core.Internal;
 using OnlineShopping.ViewModels.Furniture;
-using Microsoft.AspNetCore.Cors;
+using System.Web.Http.Filters;
+using System.Drawing;
+using System.Net.Mail;
 
 namespace OnlineShopping.Controllers
 {
@@ -97,7 +105,7 @@ namespace OnlineShopping.Controllers
                 PhoneNumber = userInfor.PhoneNumbers,
                 Email = userInfor.Email,
                 CreationDate = DateTime.Now,
-                IsActivated = true,
+                Status = "Activated",
                 TwoFactorEnabled = false                       
             };
             var result = await _userManager.CreateAsync(newUser, userInfor.Password);
@@ -210,7 +218,7 @@ namespace OnlineShopping.Controllers
                     Email = externalEmail,
                     EmailConfirmed = true,
                     CreationDate = DateTime.Now,
-                    IsActivated = true,
+                    Status = "Activated",
                     TwoFactorEnabled = false,
                 };
                 var result = await _userManager.CreateAsync(newUser);
@@ -243,7 +251,7 @@ namespace OnlineShopping.Controllers
             var logginedUser = await _userManager.FindByEmailAsync(loginModel.Email);
             var passwordChecker = await _userManager.CheckPasswordAsync(logginedUser, loginModel.Password);
             //checking if the user existed and password was valid
-            if (logginedUser == null || !passwordChecker || !logginedUser.IsActivated)
+            if (logginedUser == null || !passwordChecker)
             {
                 return Unauthorized();
             }
@@ -348,15 +356,15 @@ namespace OnlineShopping.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetAllFurniture() //thieu availabe
         {         
-            var furnitures = await _dbContext.Furnitures.ToListAsync();
-            var response = furnitures.Select(f => new
+            var furnitures = await _dbContext.Furnitures.ToListAsync();            
+            var response = furnitures.Select(f => new 
             {
                 FurnitureId = f.FurnitureId,
-                FurnitureName = f.FurnitureName,
+                FurnitureName = f.FurnitureName,              
                 VoteStar = f.Sold,
                 Sold = f.Sold,
                 Label = f.Label.LabelName,
-                Price = f.FurnitureSpecifications.Max(fs => fs.Price) == f.FurnitureSpecifications.Min(fs => fs.Price)
+                Price = f.FurnitureSpecifications.Max(fs => fs.Price) == f.FurnitureSpecifications.Min(fs => fs.Price) 
                           ? $"{f.FurnitureSpecifications.Max(fs => fs.Price)}" : $"{f.FurnitureSpecifications.Min(fs => fs.Price)} - {f.FurnitureSpecifications.Max(fs => fs.Price)}",
                 //Image = f.FurnitureSpecifications.FirstOrDefault().Attachment.FirstOrDefault().Path
             }).ToList();
@@ -369,7 +377,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> GetFurnitureSpecificationById(int id) //thieu available
         {
             var furnitureSpecifications = await _dbContext.FurnitureSpecifications.Where(fs => fs.FurnitureId == id).ToListAsync();
-            if (furnitureSpecifications.Count == 0)
+            if (furnitureSpecifications.Count < 1)
             {
                 return NotFound();
             } 
@@ -437,7 +445,7 @@ namespace OnlineShopping.Controllers
 
         [HttpPost("add-to-cart")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> AddToCart(string furnitureSpecificationId, int quantity)
+        public async Task<IActionResult> AddToCart(int furnitureSpecificationId, int quantity)
         {
             if (furnitureSpecificationId == null || quantity == null) return BadRequest();
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -448,7 +456,7 @@ namespace OnlineShopping.Controllers
            
             //kiem tra san pham da co trong gio hang chua
             var cartDetailExist = await _dbContext.CartDetails.FirstOrDefaultAsync(cd => cd.CartId == logginedUser.Cart.CartId
-                                           && cd.FurnitureSpecificationId.Equals(furnitureSpecificationId));
+                                           && cd.FurnitureSpecificationId == furnitureSpecificationId);
             if (cartDetailExist != null)
             {
                 if (quantity == 0)
@@ -485,13 +493,13 @@ namespace OnlineShopping.Controllers
 
         [HttpDelete("delete-cart")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> DeleteCartItem(string furnitureSpecificationId)
+        public async Task<IActionResult> DeleteCartItem(int furnitureSpecificationId)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Loggined user not found ");
             var logginedUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
             var cartItems = logginedUser.Cart.CartDetails.ToList();
-            var deleteItem = cartItems.FirstOrDefault(c => c.FurnitureSpecificationId.Equals(furnitureSpecificationId));
+            var deleteItem = cartItems.FirstOrDefault(c => c.FurnitureSpecificationId == furnitureSpecificationId);
             if (deleteItem == null) return NotFound("This furniture is not in the cart");
             try
             {
@@ -669,7 +677,7 @@ namespace OnlineShopping.Controllers
             {
                 Id = a.Address.AddressId,
                 Street = a.Address.Street,
-                Ward = a.Address.Ward,
+                Commune = a.Address.Commune,
                 District = a.Address.District,
                 Provine = a.Address.Provine,
                 AddressType = a.AddressType
@@ -696,7 +704,7 @@ namespace OnlineShopping.Controllers
             var newAddress = new Models.Address()
             {
                 Street = userInput.Street,
-                Ward = userInput.Ward,
+                Commune = userInput.Commune,
                 District = userInput.District,
                 Provine = userInput.Provine,
                 AddressOwner = "USER"
@@ -732,7 +740,7 @@ namespace OnlineShopping.Controllers
 
             }
             currentAddress.Street = userInput.Street == null ? currentAddress.Street : userInput.Street;
-            currentAddress.Ward = userInput.Ward == null ? currentAddress.Ward : userInput.Ward;
+            currentAddress.Commune = userInput.Commune == null ? currentAddress.Commune : userInput.Commune;
             currentAddress.District = userInput.District == null ? currentAddress.District : userInput.District; 
             currentAddress.Provine = userInput.Provine == null ? currentAddress.Provine : userInput.Provine;
             currentUserAddress.AddressType = userInput.Type == null ? currentUserAddress.AddressType : userInput.Type.ToUpper();
@@ -838,9 +846,9 @@ namespace OnlineShopping.Controllers
                                                                                      //ORDER
         [HttpGet("checkout-now")]
         [Authorize(Roles = "CUSTOMER")] //thieu image o response
-        public async Task<IActionResult> CheckoutNow(string furnitureSpecificationId, int Quantity)
+        public async Task<IActionResult> CheckoutNow(int furnitureSpecificationId, int Quantity)
         {
-            if (furnitureSpecificationId.IsNullOrEmpty() || Quantity < 1) return BadRequest("FurniturSpecficationID or quantity is required");
+            if (furnitureSpecificationId == 0 || Quantity < 1) return BadRequest("FurniturSpecficationID or quantity is required");
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Loggined user not found ");
             var logginedUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
@@ -872,9 +880,9 @@ namespace OnlineShopping.Controllers
 
         [HttpGet("checkout-via-cart")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> CheckoutViaCart([FromQuery] List<int> cartIdList)
+        public async Task<IActionResult> CheckoutViaCart([FromQuery]List<int> cartIdList)
         {
-            if (cartIdList.IsNullOrEmpty()) return BadRequest("cartId is required");
+            if (cartIdList.Count == 0) return BadRequest("cartId is required");
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Loggined user not found ");
             var logginedUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
@@ -912,54 +920,7 @@ namespace OnlineShopping.Controllers
                 items = selectedItems,
                 TotalCost = selectedItems.Sum(i => i.Cost),
                 Payments = paymentMethods
-
-            };
-            return Ok(response);
-        }
-
-        [HttpGet("checkout-customize-furniture")]
-        [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> CheckoutCustomizeFurniture([FromQuery] List<string> customizeFurnitureIdList)
-        {
-            if (customizeFurnitureIdList.IsNullOrEmpty()) return BadRequest("cartId is required");
-            var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
-            var logginedUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-            //var checkCustomerInfor = CheckCustomerInfor(logginedUser);
-            //if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
-            //    new Response() { Status = "Error", Message = checkCustomerInfor });
-            var customizeFurnitureList = logginedUser.CustomizeFurnitures.ToList();
-            var selectedItems = new List<CustomizeFurnitureCheckout>();
-            foreach (var id in customizeFurnitureIdList)
-            {
-                CustomizeFurniture item = customizeFurnitureList.FirstOrDefault(i => i.CustomizeFurnitureId.Equals(id));
-                if (item == null) return NotFound($"The customize furniture with id = {id} does not exist in customize furniture list of user");
-                if (!item.Result.Status.Equals("Accepted")) return StatusCode(StatusCodes.Status406NotAcceptable, 
-                    new Response() { Status = "Error", Message = $"Cannot checkout customize furniture with \"{item.Result.Status}\" status"});
-                var data = new CustomizeFurnitureCheckout()
-                {
-                    
-                    CustomizeFurnitureId = item.CustomizeFurnitureId,
-                    CustomizeFurnitureName = item.CustomizeFurnitureName,
-                    Quantity = item.Quantity,
-                    Cost = item.Result.ExpectedPrice.Value
-                };
-                selectedItems.Add(data);
-            };
-            var paymentMethods = await _dbContext.Payments.Select(p => new
-            {
-                PaymentId = p.PaymentId,
-                PaymentMethod = p.PaymentMethod
-            }).ToListAsync();
-            var deliveryAddress = logginedUser.UserAddresses.FirstOrDefault(ua => ua.AddressType.Equals("DEFAULT"));
-            var response = new
-            {
-                DeliveryAddressId = deliveryAddress.AddressId,
-                DeliveryAddress = deliveryAddress.Address.ToString(),
-                items = selectedItems,
-                TotalCost = selectedItems.Sum(i => i.Cost),
-                Payments = paymentMethods
-
+                
             };
             return Ok(response);
         }
@@ -968,14 +929,13 @@ namespace OnlineShopping.Controllers
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> Order(OrderViewModel model)
         {
+
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Loggined user not found ");
             var logginedUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-            //var checkCustomerInfor = CheckCustomerInfor(logginedUser);
-            //if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
-            //    new Response() { Status = "Error", Message = checkCustomerInfor });
-            bool isCustomizeFurnitureOrder = model.Items.FirstOrDefault().ItemId.StartsWith("CF") ? true : false;
-            if (isCustomizeFurnitureOrder && model.PaymentId == 1) return BadRequest("Cash payment is not available for customize furniture order");
+            var checkCustomerInfor = CheckCustomerInfor(logginedUser);
+            if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
+                new Response() { Status = "Error", Message = checkCustomerInfor });
             if (logginedUser.Point.TotalPoint < model.UsedPoint) return BadRequest("The total point is not enough");
             var deliverAddress = await _dbContext.UserAddresses.FirstOrDefaultAsync(a => a.AddressId == model.AddressId && a.UserId.Equals(logginedUser.Id));
             var newOrder = new Order()
@@ -994,39 +954,21 @@ namespace OnlineShopping.Controllers
             var addedOrder = await _dbContext.Orders.Where(o => o.CustomerId.Equals(logginedUser.Id)).OrderBy(o => o.OrderDate).LastAsync();
             foreach (var item in model.Items)
             {
-                
-                if (!isCustomizeFurnitureOrder)
+                var itemPrice = _dbContext.FurnitureSpecifications.Find(item.FurnitureSpecificationId).Price;
+                var orderItem = new FurnitureOrderDetail()
                 {
-                    var itemPrice = _dbContext.FurnitureSpecifications.Find(item.ItemId).Price;
-                    var orderItem = new FurnitureOrderDetail()
-                    {
-
-                        OrderId = addedOrder.OrderId,
-                        FurnitureSpecificationId = item.ItemId,
-                        Quantity = item.Quantity,
-                        Cost = Math.Round(itemPrice * item.Quantity, 2)
-                    };
-                    await _dbContext.AddAsync(orderItem);
-                }
-                else
-                {
-                    CustomizeFurniture customizeFurniture = await _dbContext.CustomizeFurnitures.FindAsync(item.ItemId);
-                    var orderItem = new CustomizeFurnitureOrderDetail()
-                    {
-                        OrderId = addedOrder.OrderId,
-                        CustomizeFunitureId = item.ItemId,
-                        Quantity = customizeFurniture.Quantity,
-                        Cost = customizeFurniture.Result.ExpectedPrice.Value
-                    };
-                    await _dbContext.AddAsync(orderItem);
-                }              
+                    OrderId = addedOrder.OrderId,
+                    FurnitureSpecificationId = item.FurnitureSpecificationId,
+                    Quantity = item.Quantity,
+                    Cost = Math.Round(itemPrice * item.Quantity, 2)
+                };
+                await _dbContext.AddAsync(orderItem);
             }
             await _dbContext.SaveChangesAsync();
-            addedOrder.TotalCost = isCustomizeFurnitureOrder ? addedOrder.CustomizeFurnitureOrderDetails.Sum(i => i.Cost) :
-                                                               addedOrder.FurnitureOrderDetails.Sum(i => i.Cost);
+            addedOrder.TotalCost = addedOrder.FurnitureOrderDetails.Sum(i => i.Cost);
             _dbContext.Update(addedOrder);
             await _dbContext.SaveChangesAsync();
-            if (addedOrder.PaymentId != 1 || isCustomizeFurnitureOrder) return Ok(UrlPayment(addedOrder.PaymentId, addedOrder.OrderId));
+            if (addedOrder.PaymentId != 1) return Ok(UrlPayment(addedOrder.PaymentId, addedOrder.OrderId));
             return Ok("Order successfully");
         }
 
@@ -1065,10 +1007,9 @@ namespace OnlineShopping.Controllers
                         {
                             //Thanh toan thanh cong
                             var order = await _dbContext.Orders.FindAsync(orderId);
-                            if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty()) order.Customer.Debit = order.TotalCost / 2;
                             order.IsPaid = true;
                             order.Status = "Preparing";
-                            _dbContext.UpdateRange(order, order.Customer);
+                            _dbContext.Update(order);
                             await _dbContext.SaveChangesAsync();
                             return Ok($"Payment success OrderId={orderId}, VNPAY TranId={vnpayTranId}");
                             
@@ -1182,7 +1123,7 @@ namespace OnlineShopping.Controllers
 
         [HttpPost("create-feedback")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> CreationFeedback([FromForm]FeedbackViewModel model)
+        public async Task<IActionResult> CreationFeedback([FromForm]FeedbackViewModel model)//thieu upload anh va video
         {
             //validation
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -1194,7 +1135,7 @@ namespace OnlineShopping.Controllers
             if (!order.Status.Equals("Deliveried")) return StatusCode(StatusCodes.Status406NotAcceptable,
                 new Response() { Status = "Error", Message = "Feedback is not available for undelivered order" });
 
-            FurnitureSpecification specification = order.FurnitureOrderDetails.FirstOrDefault(fod => fod.FurnitureSpecificationId.Equals(model.FurnitureSpecificationId)).FurnitureSpecification;
+            FurnitureSpecification specification = order.FurnitureOrderDetails.FirstOrDefault(fod => fod.FurnitureSpecificationId == model.FurnitureSpecificationId).FurnitureSpecification;
             if (specification == null) return NotFound($"The order does not contains funiture specification with id = {model.FurnitureSpecificationId}");
             var specificationFeedbacks = specification.Feedbacks.ToList();
             if (specificationFeedbacks.FirstOrDefault(fb => fb.OrderId == order.OrderId) != null)
@@ -1231,7 +1172,7 @@ namespace OnlineShopping.Controllers
             await _dbContext.SaveChangesAsync(); 
 
             //upload image or video
-            if (!model.files.IsNullOrEmpty())
+            if (model.files.Count != 0)
             {
                 var addedFeedback = await _dbContext.Feedbacks.FirstOrDefaultAsync(fb => fb.OrderId == order.OrderId &&
                                            fb.FurnitureSpecificationId == specification.FurnitureSpecificationId);
@@ -1298,14 +1239,6 @@ namespace OnlineShopping.Controllers
                         AttachmentName = a.AttachmentName,
                         Path = a.Path
                     }),
-                    Result = new
-                    {
-                        Status = cf.Result.Status,
-                        ExpectedPrice = cf.Result.ExpectedPrice,
-                        ActualCompletionDate = cf.Result.ActualCompletionDate,
-                        Reason = cf.Result.Reason
-                    }
-
                 }).ToList();
                 return Ok(response);
             }
@@ -1329,10 +1262,9 @@ namespace OnlineShopping.Controllers
             //if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
             //    new Response() { Status = "Error", Message = checkCustomerInfor });
 
-            // tao customize furniture de shop owner duyet
+            // tao customize furniture de shop owener duyet
             var newCustomizeFurniture = new CustomizeFurniture()
             {
-                CustomizeFurnitureId = "CF-"+Guid.NewGuid().ToString().ToUpper(),
                 CustomerId = logginedUser.Id,
                 CustomizeFurnitureName = userInput.CustomizeFurnitureName,
                 CategoryId = userInput.CategoryId,
@@ -1356,7 +1288,7 @@ namespace OnlineShopping.Controllers
             };
             await _dbContext.AddAsync(newResult);
             await _dbContext.SaveChangesAsync();
-            if (userInput.Attachments.IsNullOrEmpty())
+            if (userInput.Attachments.Count > 0)
             {
                 var fileHandle = new FileHandleService();
                 foreach (var file in userInput.Attachments)
@@ -1387,22 +1319,21 @@ namespace OnlineShopping.Controllers
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Loggined user not found ");
             var logginedUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-            CustomizeFurniture customizeFurniture = logginedUser.CustomizeFurnitures.FirstOrDefault(cf => cf.CustomizeFurnitureId.Equals(userInput.CustomizeFurnitureId));
+            CustomizeFurniture customizeFurniture = logginedUser.CustomizeFurnitures.FirstOrDefault(cf => cf.CustomizeFurnitureId == userInput.CustomizeFurnitureId);
             if (customizeFurniture == null) return NotFound("Customize furniture not found");
             if (!customizeFurniture.Result.Status.Equals("Pending")) return StatusCode(StatusCodes.Status406NotAcceptable,
                 new Response() { Status = "Error", Message = "The customize furniture can only be changed while in the pending status" });
-
-            customizeFurniture.CustomizeFurnitureName = userInput.CustomizeFurnitureName.IsNullOrEmpty()? customizeFurniture.CustomizeFurnitureName : userInput.CustomizeFurnitureName;     
-            customizeFurniture.ColorId = !userInput.ColorId.HasValue || userInput.ColorId.Value == 0  ? customizeFurniture.ColorId : userInput.ColorId.Value;
-            customizeFurniture.Height = !userInput.Height.HasValue || userInput.Height.Value == 0  ? customizeFurniture.Height : userInput.Height.Value;
-            customizeFurniture.Width = !userInput.Width.HasValue || userInput.Width.Value == 0  ? customizeFurniture.Width : userInput.Width.Value;
-            customizeFurniture.Length = !userInput.Length.HasValue || userInput.Length.Value == 0  ? customizeFurniture.Length : userInput.Length.Value;
-            customizeFurniture.WoodId = !userInput.WoodId.HasValue || userInput.WoodId.Value == 0  ? customizeFurniture.WoodId : userInput.WoodId.Value;
-            customizeFurniture.Quantity = !userInput.Quantity.HasValue || userInput.Quantity.Value == 0  ? customizeFurniture.Quantity : userInput.Quantity.Value;
-            customizeFurniture.DesiredCompletionDate = !userInput.DesiredCompletionDate.HasValue? customizeFurniture.DesiredCompletionDate : userInput.DesiredCompletionDate.Value;
+            customizeFurniture.CustomizeFurnitureName = userInput.CustomizeFurnitureName.IsNullOrEmpty()? customizeFurniture.CustomizeFurnitureName : userInput.CustomizeFurnitureName;
+            customizeFurniture.ColorId = userInput.ColorId.Value == 0 || userInput.ColorId.Value == null ? customizeFurniture.ColorId : userInput.ColorId.Value;
+            customizeFurniture.Height = userInput.Height.Value == 0 || userInput.Height.Value == null ? customizeFurniture.Height : userInput.Height.Value;
+            customizeFurniture.Width = userInput.Width.Value == 0 || userInput.Width.Value == null ? customizeFurniture.Width : userInput.Width.Value;
+            customizeFurniture.Length = userInput.Length.Value == 0 || userInput.Length.Value == null ? customizeFurniture.Length : userInput.Length.Value;
+            customizeFurniture.WoodId = userInput.WoodId.Value == 0 || userInput.WoodId.Value == null ? customizeFurniture.WoodId : userInput.WoodId.Value;
+            customizeFurniture.Quantity = userInput.Quantity.Value == 0 || userInput.Quantity.Value == null ? customizeFurniture.Quantity : userInput.Quantity.Value;
+            customizeFurniture.DesiredCompletionDate = userInput.DesiredCompletionDate.Value == null ? customizeFurniture.DesiredCompletionDate : userInput.DesiredCompletionDate.Value;
             _dbContext.Update(customizeFurniture);
             await _dbContext.SaveChangesAsync();
-            if (!userInput.Attachments.IsNullOrEmpty())
+            if (customizeFurniture.Attachments != null)
             {
                 var fileHandle = new FileHandleService();
                 foreach (var attachment in customizeFurniture.Attachments)
@@ -1429,41 +1360,6 @@ namespace OnlineShopping.Controllers
             }
             return Ok("Update customize furnituer successfully"); 
         }
-
-        //DELETE
-        [HttpDelete("remove-customize-furniture")]
-        [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> DeleteCustomizeFurniture(int id)
-        {
-            var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
-            var logginedUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-            CustomizeFurniture customizeFurniture = await _dbContext.CustomizeFurnitures.FindAsync(id);
-            if (customizeFurniture == null) return NotFound("Customize furniture not found");
-            try
-            {
-                if (!customizeFurniture.Attachments.IsNullOrEmpty())
-                {
-                    _dbContext.RemoveRange(customizeFurniture.Attachments);
-                    await _dbContext.SaveChangesAsync();
-                }
-                if (customizeFurniture.Result != null)
-                {
-                    _dbContext.RemoveRange(customizeFurniture.Result);
-
-                }
-                _dbContext.Remove(customizeFurniture);
-                await _dbContext.SaveChangesAsync();
-                return Ok("Remove customize furniture successfully");
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new Response() { Status = "Error", Message = $"An error occurred while removing custom furniture {ex.Message}" });
-
-            }
-        }
-
 
 
         ////SUPPORTED METHOD
@@ -1615,13 +1511,7 @@ namespace OnlineShopping.Controllers
             vnpay.AddRequestData("vnp_Version", VnPayService.VERSION);
             vnpay.AddRequestData("vnp_Command", "pay");
             vnpay.AddRequestData("vnp_TmnCode", vnp_TmnCode);
-            if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty()) 
-            {
-                vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000/2).ToString()); // thanh toán trước 50% nếu là đơn customize
-            } else
-            {
-                vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000).ToString()); //Số tiền thanh toán. Số tiền không mang các ký tự phân tách thập phân, phần nghìn, ký tự tiền tệ. Để gửi số tiền thanh toán là 100,000 VND (một trăm nghìn VNĐ) thì merchant cần nhân thêm 100 lần (khử phần thập phân), sau đó gửi sang VNPAY là: 10000000
-            }
+            vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000).ToString()); //Số tiền thanh toán. Số tiền không mang các ký tự phân tách thập phân, phần nghìn, ký tự tiền tệ. Để gửi số tiền thanh toán là 100,000 VND (một trăm nghìn VNĐ) thì merchant cần nhân thêm 100 lần (khử phần thập phân), sau đó gửi sang VNPAY là: 10000000
             var payment = _dbContext.Payments.Find(typePayment);
             vnpay.AddRequestData("vnp_BankCode", payment.PaymentMethod);
             vnpay.AddRequestData("vnp_CreateDate", order.OrderDate.ToString("yyyyMMddHHmmss"));

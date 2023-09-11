@@ -5,7 +5,7 @@ namespace OnlineShopping.ViewModels.Furniture
     public class EditCustomizeFurnitureViewModel
     {
         [Required]
-        public string CustomizeFurnitureId { get; set; }
+        public int CustomizeFurnitureId { get; set; }
       
         [StringLength(50, MinimumLength = 2,
             ErrorMessage = "Category cannot be less than 2 characters or exceed 50 characters")]

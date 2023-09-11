@@ -290,6 +290,11 @@ namespace OnlineShopping.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Commune")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
                     b.Property<string>("District")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -305,11 +310,6 @@ namespace OnlineShopping.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
-                    b.Property<string>("Ward")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
                     b.HasKey("AddressId");
 
                     b.ToTable("Addresses");
@@ -319,28 +319,28 @@ namespace OnlineShopping.Migrations
                         {
                             AddressId = 1,
                             AddressOwner = "USER",
+                            Commune = "Commune 1",
                             District = "District 1",
                             Provine = "Provine 1",
-                            Street = "Street 1",
-                            Ward = "Commune 1"
+                            Street = "Street 1"
                         },
                         new
                         {
                             AddressId = 2,
                             AddressOwner = "REPOSITORY",
+                            Commune = "Commune 2",
                             District = "District 2",
                             Provine = "Provine 2",
-                            Street = "Street 2",
-                            Ward = "Commune 2"
+                            Street = "Street 2"
                         },
                         new
                         {
                             AddressId = 3,
                             AddressOwner = "SUPLIER",
+                            Commune = "Commune 3",
                             District = "District 3",
                             Provine = "Provine 3",
-                            Street = "Street 3",
-                            Ward = "Commune 3"
+                            Street = "Street 3"
                         });
                 });
 
@@ -407,9 +407,8 @@ namespace OnlineShopping.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("FurnitureSpecificationId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("FurnitureSpecificationId")
+                        .HasColumnType("int");
 
                     b.Property<int>("OrderId")
                         .HasColumnType("int");
@@ -589,8 +588,11 @@ namespace OnlineShopping.Migrations
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.CustomizeFurniture", b =>
                 {
-                    b.Property<string>("CustomizeFurnitureId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("CustomizeFurnitureId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CustomizeFurnitureId"), 1L, 1);
 
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
@@ -717,8 +719,11 @@ namespace OnlineShopping.Migrations
 
             modelBuilder.Entity("OnlineShopping.Models.Funiture.FurnitureSpecification", b =>
                 {
-                    b.Property<string>("FurnitureSpecificationId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("FurnitureSpecificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FurnitureSpecificationId"), 1L, 1);
 
                     b.Property<int?>("ColorId")
                         .HasColumnType("int");
@@ -762,7 +767,7 @@ namespace OnlineShopping.Migrations
                     b.HasData(
                         new
                         {
-                            FurnitureSpecificationId = "FS-1bb8d3c2-1e2d-4dd0-b124-e3c903af6733",
+                            FurnitureSpecificationId = 1,
                             ColorId = 1,
                             Description = " This is testing decription",
                             FurnitureId = 1,
@@ -775,7 +780,7 @@ namespace OnlineShopping.Migrations
                         },
                         new
                         {
-                            FurnitureSpecificationId = "FS-9c73f5b6-067f-4622-aaab-a3c9d23f97ca",
+                            FurnitureSpecificationId = 2,
                             ColorId = 2,
                             Description = " This is testing decription",
                             FurnitureId = 1,
@@ -788,7 +793,7 @@ namespace OnlineShopping.Migrations
                         },
                         new
                         {
-                            FurnitureSpecificationId = "FS-3d976d64-5105-4f3b-b587-7ee1280f89c0",
+                            FurnitureSpecificationId = 3,
                             ColorId = 1,
                             Description = " This is testing decription",
                             FurnitureId = 2,
@@ -801,7 +806,7 @@ namespace OnlineShopping.Migrations
                         },
                         new
                         {
-                            FurnitureSpecificationId = "FS-cf13db72-b214-4744-8265-4cea4d613ab1",
+                            FurnitureSpecificationId = 4,
                             ColorId = 2,
                             Description = " This is testing decription",
                             FurnitureId = 2,
@@ -860,9 +865,8 @@ namespace OnlineShopping.Migrations
                     b.Property<DateTime?>("ActualCompletionDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CustomizeFurnitureId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("CustomizeFurnitureId")
+                        .HasColumnType("int");
 
                     b.Property<double?>("ExpectedPrice")
                         .HasColumnType("float");
@@ -929,9 +933,8 @@ namespace OnlineShopping.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("CustomizeFurnitureId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("CustomizeFurnitureId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Path")
                         .IsRequired()
@@ -990,9 +993,8 @@ namespace OnlineShopping.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("FurnitureSpecificationId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("FurnitureSpecificationId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Path")
                         .IsRequired()
@@ -1070,9 +1072,8 @@ namespace OnlineShopping.Migrations
                     b.Property<int>("CartId")
                         .HasColumnType("int");
 
-                    b.Property<string>("FurnitureSpecificationId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("FurnitureSpecificationId")
+                        .HasColumnType("int");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
@@ -1094,17 +1095,10 @@ namespace OnlineShopping.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CustomizeFurnitureOrderDetailId"), 1L, 1);
 
-                    b.Property<double>("Cost")
-                        .HasColumnType("float");
-
-                    b.Property<string>("CustomizeFunitureId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("OrderId")
+                    b.Property<int>("CustomizeFunitureId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Quantity")
+                    b.Property<int>("OrderId")
                         .HasColumnType("int");
 
                     b.HasKey("CustomizeFurnitureOrderDetailId");
@@ -1127,9 +1121,8 @@ namespace OnlineShopping.Migrations
                     b.Property<double>("Cost")
                         .HasColumnType("float");
 
-                    b.Property<string>("FurnitureSpecificationId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("FurnitureSpecificationId")
+                        .HasColumnType("int");
 
                     b.Property<int>("OrderId")
                         .HasColumnType("int");
@@ -1270,7 +1263,7 @@ namespace OnlineShopping.Migrations
                             PointId = 1,
                             CustomerId = "1",
                             Description = "Create account successfully +500 points",
-                            History = new DateTime(2023, 9, 6, 20, 16, 31, 300, DateTimeKind.Local).AddTicks(8303),
+                            History = new DateTime(2023, 8, 29, 23, 21, 24, 352, DateTimeKind.Local).AddTicks(7238),
                             TotalPoint = 500
                         });
                 });
@@ -1323,8 +1316,8 @@ namespace OnlineShopping.Migrations
                     b.Property<int>("RepositoryId")
                         .HasColumnType("int");
 
-                    b.Property<string>("FurnitureSpecificationId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("FurnitureSpecificationId")
+                        .HasColumnType("int");
 
                     b.Property<int>("Available")
                         .HasColumnType("int");
@@ -1334,6 +1327,20 @@ namespace OnlineShopping.Migrations
                     b.HasIndex("FurnitureSpecificationId");
 
                     b.ToTable("FurnitureRepositories");
+
+                    b.HasData(
+                        new
+                        {
+                            RepositoryId = 1,
+                            FurnitureSpecificationId = 1,
+                            Available = 0
+                        },
+                        new
+                        {
+                            RepositoryId = 1,
+                            FurnitureSpecificationId = 2,
+                            Available = 0
+                        });
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Warehouse.Import", b =>
@@ -1527,7 +1534,7 @@ namespace OnlineShopping.Migrations
                             RepositoryId = 1,
                             AddressId = 1,
                             Capacity = 50.0,
-                            CreationDate = new DateTime(2023, 9, 6, 20, 16, 31, 302, DateTimeKind.Local).AddTicks(8734),
+                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 354, DateTimeKind.Local).AddTicks(1920),
                             RepositoryName = "Repository 1"
                         });
                 });
@@ -1604,9 +1611,6 @@ namespace OnlineShopping.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("IsActivated")
-                        .HasColumnType("bit");
-
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -1618,6 +1622,10 @@ namespace OnlineShopping.Migrations
                     b.Property<double?>("Spent")
                         .HasColumnType("float");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasDiscriminator().HasValue("User");
 
                     b.HasData(
@@ -1625,101 +1633,101 @@ namespace OnlineShopping.Migrations
                         {
                             Id = "1",
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "d585fc5e-d47c-4ae8-8e37-1efa4a1a7032",
+                            ConcurrencyStamp = "cbd44045-0ca9-4237-99a1-24050eb8d7fd",
                             Email = "customer1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "customer1",
-                            PasswordHash = "AQAAAAEAACcQAAAAEO4S3AJb6ODWG4WKvamyTCq0WQmCmUS3FP9LkL92TX+CRyr7nknxa9BrHf1xys8fWQ==",
+                            PasswordHash = "AQAAAAEAACcQAAAAEBwU7Zn7BiLGn5y3guGnRzDczwUcbkZyUzmhdYP+SPwUCamBAYIoG4ROng3GEGGncQ==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "51e5a1d7-1ff9-414d-8b11-ccf668728a23",
+                            SecurityStamp = "17cad0b3-54bc-48d9-b3fb-d09f5a11bb5b",
                             TwoFactorEnabled = false,
                             UserName = "customer1",
                             Avatar = "customer.jpg",
-                            CreationDate = new DateTime(2023, 9, 6, 20, 16, 31, 268, DateTimeKind.Local).AddTicks(3034),
+                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6341),
                             Debit = 0.0,
                             DoB = new DateTime(2002, 3, 11, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Customer",
                             Gender = "Male",
-                            IsActivated = true,
                             LastName = "Customer",
-                            Spent = 0.0
+                            Spent = 0.0,
+                            Status = "Activated"
                         },
                         new
                         {
                             Id = "2",
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "2684aaa7-c180-49d8-a209-6d12c8a2de94",
+                            ConcurrencyStamp = "5fbe3b83-9d43-4d5b-bd4a-9e3644924bf9",
                             Email = "assistant1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "assistant1",
-                            PasswordHash = "AQAAAAEAACcQAAAAEAtZcRGQ1aUbfQC5jiGHrm55/uSaF05p6/9DZTrG4Qf2Csn83ZAN1LVhFhmkYkZw0A==",
+                            PasswordHash = "AQAAAAEAACcQAAAAEPPPkbBtKoLrpwFfcJwqFDfreD3pfyo1KYjXbWcw2sHxJwGnz7izrLBqmKbL2ApzDA==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "5f0d22b2-09d4-45d3-b5ba-31ffb986d5be",
+                            SecurityStamp = "ff5fb428-ae2e-48b3-8b09-1846ee7d8cef",
                             TwoFactorEnabled = false,
                             UserName = "assistant1",
                             Avatar = "assistant.jpg",
-                            CreationDate = new DateTime(2023, 9, 6, 20, 16, 31, 268, DateTimeKind.Local).AddTicks(3069),
+                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6370),
                             Debit = 0.0,
                             DoB = new DateTime(2002, 8, 21, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Assistant",
                             Gender = "Female",
-                            IsActivated = true,
                             LastName = "Assistant",
-                            Spent = 0.0
+                            Spent = 0.0,
+                            Status = "Activated"
                         },
                         new
                         {
                             Id = "3",
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "9c194a00-3813-42ee-b23e-9173e545b0af",
+                            ConcurrencyStamp = "99d76af5-a13a-40ef-8f5b-20b6db043d1b",
                             Email = "manager1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "manager1",
-                            PasswordHash = "AQAAAAEAACcQAAAAEGqaLQDXDNAqRrZa6z73FDmlMVkh0L9iBjHSybo8aarO7EXuy8MiQ+eBXcxkWE0/CQ==",
+                            PasswordHash = "AQAAAAEAACcQAAAAEEJ7Gln/bW6asVktVGb1M9Kl5vNXbUeakE1ilgP0uj/w7ptVGOeMiOk0ksVHDXDzkg==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "e1beb15e-637a-4df1-9509-5366686a56c1",
+                            SecurityStamp = "351089ff-175f-4e37-a47e-aaef8cda35e3",
                             TwoFactorEnabled = false,
                             UserName = "manager1",
                             Avatar = "manager.jpg",
-                            CreationDate = new DateTime(2023, 9, 6, 20, 16, 31, 268, DateTimeKind.Local).AddTicks(3088),
+                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6382),
                             Debit = 0.0,
                             DoB = new DateTime(2000, 5, 12, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Manager",
                             Gender = "Male",
-                            IsActivated = true,
                             LastName = "Manager",
-                            Spent = 0.0
+                            Spent = 0.0,
+                            Status = "Activated"
                         },
                         new
                         {
                             Id = "4",
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "2546034d-1cd7-465f-800b-33d6ab257d5a",
+                            ConcurrencyStamp = "29f731f6-82f7-4761-a4a1-6983295c7997",
                             Email = "admin1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "admin1",
-                            PasswordHash = "AQAAAAEAACcQAAAAEF1LG0ipiSOI4uLnfLISzsbxIuM7TvCnLY9SDidT6LDIH2xfOhrgDOQjATCJcnixAQ==",
+                            PasswordHash = "AQAAAAEAACcQAAAAEL2Q17L4gI0k1O7naEuvB9HjSf0jMV0ZfhvPJXxMQ9L1m56hK+AjLtBJd5vAwkpetQ==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "3b070941-a9f1-4ca8-a427-e30a7e5647ab",
+                            SecurityStamp = "57749cf3-bc56-4b14-93a4-3b721d20e936",
                             TwoFactorEnabled = false,
                             UserName = "admin1",
                             Avatar = "admin.jpg",
-                            CreationDate = new DateTime(2023, 9, 6, 20, 16, 31, 268, DateTimeKind.Local).AddTicks(3103),
+                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6391),
                             Debit = 0.0,
                             DoB = new DateTime(2001, 7, 13, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Admin",
                             Gender = "Male",
-                            IsActivated = true,
                             LastName = "Admin",
-                            Spent = 0.0
+                            Spent = 0.0,
+                            Status = "Activated"
                         });
                 });
 
