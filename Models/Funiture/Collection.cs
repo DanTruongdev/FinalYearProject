@@ -11,6 +11,6 @@ namespace OnlineShopping.Models.Funiture
            ErrorMessage = "Collection name cannot be less than 2 characters or exceed 50 characters")]
         public string CollectionName { get; set; }
         //
-        public ICollection<Furniture> Furnitures { get; set;}
+        public virtual ICollection<Furniture> Furnitures { get; set;}
     }
 }

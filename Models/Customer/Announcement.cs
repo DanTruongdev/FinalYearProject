@@ -11,7 +11,7 @@ namespace OnlineShopping.Models.Customer
         public string Content { get; set; }
         public DateTime CreationDate { get; set; }
         //
-        public User User { get; set; }
+        public virtual User User { get; set; }
 
     }
 }

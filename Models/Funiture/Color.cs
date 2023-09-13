@@ -11,8 +11,8 @@ namespace OnlineShopping.Models.Funiture
             ErrorMessage = "Color name  cannot be less than 3 characters or exceed 20 characters")]
         public string ColorName { get; set; }
         //
-        public ICollection<FurnitureSpecification> FurnitureSpecifications { get; set; }
-        public ICollection<Requirement> Requirements { get; set; }
+        public virtual ICollection<FurnitureSpecification> FurnitureSpecifications { get; set; }
+        public virtual ICollection<CustomizeFurniture> CustomizeFurnitures { get; set; }
 
     }
 }
