@@ -12,8 +12,10 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Cors" Version="5.2.9" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="6.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.15" />
+    <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="6.0.15" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="6.0.15" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.15" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.15">
       <PrivateAssets>all</PrivateAssets>
@@ -25,9 +27,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Assets\Images\OtherImages\" />
-    <Folder Include="Assets\Images\UserImages\" />
-    <Folder Include="Assets\Videos\" />
+    <Folder Include="Assets\Images\FurnitureSpecificaiton\" />
+    <Folder Include="Assets\Images\Feedback\" />
+    <Folder Include="Assets\Images\Material\" />
+    <Folder Include="Assets\Images\CustomizeFurniture\" />
+    <Folder Include="Assets\Images\Import\" />
+    <Folder Include="Assets\Images\Suplier\" />
+    <Folder Include="Assets\Images\Warranty\" />
+    <Folder Include="Assets\Images\Requirement\" />
+    <Folder Include="Assets\Images\User\" />
+    <Folder Include="Assets\Videos\FurnitureSpecification\" />
+    <Folder Include="Assets\Videos\Feedback\" />
+    <Folder Include="Assets\Videos\CustomizeFurniture\" />
+    <Folder Include="Assets\Videos\Requirement\" />
+    <Folder Include="Assets\Videos\Warranty\" />
+    <Folder Include="ViewModels\Cart\" />
   </ItemGroup>
 
 </Project>

@@ -11,6 +11,6 @@ namespace OnlineShopping.Models.Funiture
             ErrorMessage = "Label cannot be less than 2 characters or exceed 20 characters")]
         public string LabelName { get; set; }
         //
-        public ICollection<Furniture> Furnitures { get; set; }
+        public virtual ICollection<Furniture> Furnitures { get; set; }
     }
 }

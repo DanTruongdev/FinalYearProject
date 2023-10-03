@@ -11,7 +11,7 @@ namespace OnlineShopping.Models.Warehouse
         [Required]
         public int Available { get; set; }
         //
-        public Repository Repository { get; set; }
-        public Material Material { get; set; }
+        public virtual Repository Repository { get; set; }
+        public virtual Material Material { get; set; }
     }
 }
