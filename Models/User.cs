@@ -27,21 +27,35 @@ namespace OnlineShopping.Models
         public double? Spent { get; set; } = 0;
         public double? Debit { get; set; } = 0;
         public DateTime CreationDate { get; set; }
-        public string Status { get; set; }
+        public DateTime? LatestUpdate { get; set; }
+        public bool IsActivated { get; set; }
+
+        public override string ToString()
+        {
+            return FirstName + " " + LastName;
+        }
 
 
         // All
-        public ICollection<Announcement>? Announcements { get; set; }
+        public virtual ICollection<Announcement>? Announcements { get; set; }
+        public virtual ICollection<UserAddress> UserAddresses { get; set; }
+       
         //Customer
-        public Point? Point { get; set; }
-        public ICollection<Feedback>? Feedbacks { get; set; }
-        public ICollection<Order>? Orders { get; set; }
-        public WishList WishList { get; set; }
-        public Cart Cart { get; set; }
-        public ICollection<UserAddress> UserAddresses { get; set; }
-        public ICollection<CustomizeFurniture>? CustomizeFurniture { get; set; }
-        public ICollection<WarrantySchedule>? WarrantySchedules { get; set; }
+        public virtual Point? Point { get; set; }
+        public virtual ICollection<Feedback>? Feedbacks { get; set; }
+        public virtual ICollection<Order>? Orders { get; set; }
+        public virtual WishList? WishList { get; set; }
+        public virtual Cart? Cart { get; set; } 
+        public virtual ICollection<CustomizeFurniture>? CustomizeFurnitures { get; set; }
+        public virtual ICollection<Warranty>? Warranties { get; set; }
+
         //Assistant
-        public ICollection<Import>? Imports { get; set; }
+        public virtual ICollection<Log>? Logs { get; set; }
+        public virtual ICollection<Import>? Imports { get; set; }
+        public virtual ICollection<MaterialRepositoryHistory>? MaterialRepositoryHistories { get; set; }
+        public virtual ICollection<FurnitureRepositoryHistory>? FurnitureRepositoryHistories { get; set; }
+        public virtual ICollection<Post>? Posts { get; set; }
+       
+      
     }
 }

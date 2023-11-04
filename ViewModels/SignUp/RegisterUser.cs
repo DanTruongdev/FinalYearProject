@@ -13,8 +13,6 @@ namespace OnlineShopping.ViewModels.SignUp
         public string? LastName { get; set; }
         public DateTime? DoB { get; set; }
         public string? Gender { get; set; }
-        [Required(ErrorMessage = "Username is required")]
-        public string? Username { get; set; }
         public string? PhoneNumbers { get; set; }
         [EmailAddress]
         [Required(ErrorMessage = "Email is required")]

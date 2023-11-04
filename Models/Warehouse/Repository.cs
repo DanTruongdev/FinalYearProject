@@ -11,13 +11,19 @@ namespace OnlineShopping.Models.Warehouse
         [StringLength(30, MinimumLength = 2,
           ErrorMessage = "Repository name cannot be less than 2 characters or exceed 50 characters")]
         public string RepositoryName { get; set; }
-        public int? AddressId { get; set; }
+        [Required]
+        public int AddressId { get; set; }
         public double Capacity { get; set; }
+        [Required]
+        public bool IsFull {get; set; } 
+        [Required]
         public DateTime CreationDate { get; set; }
         //
-        public Address? Address { get; set; }
-        public ICollection<Import> Imports { get; set; }
-        public ICollection<FurnitureRepository>? FurnitureRepositories { get; set; }
-        public ICollection<MaterialRepository>? MaterialRepositories { get; set; }
+        public virtual Address? Address { get; set; }
+        public virtual ICollection<Import> Imports { get; set; }
+        public virtual ICollection<FurnitureRepositoryHistory> FurnitureRepositoryHistories { get; set; }
+        public virtual ICollection<MaterialRepositoryHistory> MaterialRepositoryHistories { get; set; }
+        public virtual ICollection<FurnitureRepository>? FurnitureRepositories { get; set; }
+        public virtual ICollection<MaterialRepository>? MaterialRepositories { get; set; }
     }
 }

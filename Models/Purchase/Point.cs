@@ -15,6 +15,6 @@ namespace OnlineShopping.Models.Purchase
         public int TotalPoint { get; set; } = 0;
         public DateTime History { get; set; }
         //
-        public User User { get; set; }
+        public virtual User User { get; set; }
     }
 }
