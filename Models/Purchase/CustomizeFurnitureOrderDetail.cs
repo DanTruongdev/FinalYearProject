@@ -11,12 +11,16 @@ namespace OnlineShopping.Models.Purchase
         [Required]
         public int OrderId { get; set; }
         [Required]
-        public int CustomizeFunitureId { get; set; }
-        [NotMapped]
+        public string CustomizeFunitureId { get; set; }
+        [Required]
+        [Range(0, 50, ErrorMessage = "Quantity must be in range 1-50")]
+        public int Quantity { get; set; }
+        [Required]
+        [Range(0,double.MaxValue, ErrorMessage = "Cost must be greater than 0")]
         public double Cost { get; set; }
         //
-        public Order Order { get; set; }
-        public CustomizeFurniture CustomizeFurniture { get; set; }
+        public virtual Order Order { get; set; }
+        public virtual CustomizeFurniture CustomizeFurniture { get; set; }
 
     }
 }
