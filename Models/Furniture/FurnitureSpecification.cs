@@ -34,6 +34,9 @@ namespace OnlineShopping.Models.Funiture
         public virtual ICollection<Feedback> Feedbacks { get; set; }
         public virtual ICollection<CartDetail> CartDetails { get; set; }
         public virtual ICollection<FurnitureOrderDetail> FurnitureOrderDetails { get; set; }
+<<<<<<<< HEAD:Models/Furniture/FurnitureSpecification.cs
         public virtual ICollection<FurnitureRepositoryHistory> FurnitureRepositoryHistories { get; set; }
+========
+>>>>>>>> fcb14cdb0cf9aa6a680a0a059cc55b426b15b924:Models/Funiture/FurnitureSpecification.cs
     }
 }

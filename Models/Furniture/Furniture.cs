@@ -23,7 +23,10 @@ namespace OnlineShopping.Models.Funiture
         public virtual Category? Category { get; set; }
         public virtual  Label? Label { get; set; }
         public virtual Collection? Collection { get; set; }
+<<<<<<<< HEAD:Models/Furniture/Furniture.cs
 
+========
+>>>>>>>> fcb14cdb0cf9aa6a680a0a059cc55b426b15b924:Models/Funiture/Furniture.cs
         public virtual ICollection<FurnitureSpecification> FurnitureSpecifications { get; set; }           
         public virtual ICollection<WishListDetail>? WishListDetails { get; set; }
       

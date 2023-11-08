@@ -56,7 +56,11 @@ namespace OnlineShopping.Migrations
                     Point = table.Column<int>(type: "int", nullable: true),
                     CreationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     LatestUpdate = table.Column<DateTime>(type: "datetime2", nullable: true),
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                     IsActivated = table.Column<bool>(type: "bit", nullable: true),
+========
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: true),
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -183,11 +187,19 @@ namespace OnlineShopping.Migrations
                 {
                     SupplierId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                     SupplierName = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
                     SupplierAddressId = table.Column<int>(type: "int", nullable: false),
                     SupplierImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     SupplierEmail = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     SupplierPhoneNums = table.Column<string>(type: "nvarchar(max)", nullable: false)
+========
+                    SuplierName = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    SuplierAddressId = table.Column<int>(type: "int", maxLength: 60, nullable: true),
+                    SuplierImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SuplierEmail = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    SuplierPhoneNums = table.Column<string>(type: "nvarchar(max)", nullable: false)
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                 },
                 constraints: table =>
                 {
@@ -345,6 +357,7 @@ namespace OnlineShopping.Migrations
                 });
 
             migrationBuilder.CreateTable(
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                 name: "Logs",
                 columns: table => new
                 {
@@ -386,6 +399,9 @@ namespace OnlineShopping.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Posts",
+========
+                name: "Points",
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                 columns: table => new
                 {
                     PostId = table.Column<int>(type: "int", nullable: false)
@@ -519,7 +535,12 @@ namespace OnlineShopping.Migrations
                 name: "CustomizeFurnitures",
                 columns: table => new
                 {
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                     CustomizeFurnitureId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+========
+                    CustomizeFurnitureId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                     CustomerId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     CustomizeFurnitureName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     CategoryId = table.Column<int>(type: "int", nullable: false),
@@ -605,7 +626,11 @@ namespace OnlineShopping.Migrations
                         name: "FK_Materials_Supliers_DefaultSuplierId",
                         column: x => x.DefaultSuplierId,
                         principalTable: "Supliers",
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                         principalColumn: "SupplierId");
+========
+                        principalColumn: "SuplierId");
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                 });
 
             migrationBuilder.CreateTable(
@@ -700,7 +725,11 @@ namespace OnlineShopping.Migrations
                 {
                     CustomizeFurnitureAttachmentId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                     CustomizeFurnitureId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+========
+                    CustomizeFurnitureId = table.Column<int>(type: "int", nullable: false),
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                     AttachmentName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Path = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Type = table.Column<string>(type: "nvarchar(max)", nullable: false)
@@ -748,7 +777,11 @@ namespace OnlineShopping.Migrations
                 {
                     ResultId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                     CustomizeFurnitureId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+========
+                    CustomizeFurnitureId = table.Column<int>(type: "int", nullable: false),
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                     ActualCompletionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     ExpectedPrice = table.Column<double>(type: "float", nullable: true),
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -880,7 +913,11 @@ namespace OnlineShopping.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     CustomerId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     OrderId = table.Column<int>(type: "int", nullable: false),
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                     FurnitureSpecificationId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+========
+                    FurnitureSpecificationId = table.Column<int>(type: "int", nullable: false),
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                     Content = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
                     VoteStar = table.Column<int>(type: "int", nullable: false),
                     Anonymous = table.Column<bool>(type: "bit", nullable: false),
@@ -930,6 +967,7 @@ namespace OnlineShopping.Migrations
                 });
 
             migrationBuilder.CreateTable(
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                 name: "FurnitureRepositoryHistories",
                 columns: table => new
                 {
@@ -964,12 +1002,18 @@ namespace OnlineShopping.Migrations
                 });
 
             migrationBuilder.CreateTable(
+========
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                 name: "FurnitureSpecificationAttachments",
                 columns: table => new
                 {
                     FurnitureSpecificationAttachemnetId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                     FurnitureSpecificationId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+========
+                    FurnitureSpecificationId = table.Column<int>(type: "int", nullable: false),
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                     AttachmentName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Path = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Type = table.Column<string>(type: "nvarchar(max)", nullable: false)
@@ -985,13 +1029,21 @@ namespace OnlineShopping.Migrations
                 });
 
             migrationBuilder.CreateTable(
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                 name: "OrderDetails",
+========
+                name: "OrderDetais",
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                 columns: table => new
                 {
                     OrderDetailId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     OrderId = table.Column<int>(type: "int", nullable: false),
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                     FurnitureSpecificationId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+========
+                    FurnitureSpecificationId = table.Column<int>(type: "int", nullable: false),
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                     Quantity = table.Column<int>(type: "int", nullable: false),
                     Cost = table.Column<double>(type: "float", nullable: false)
                 },
@@ -1074,12 +1126,22 @@ namespace OnlineShopping.Migrations
 
             migrationBuilder.InsertData(
                 table: "AspNetUsers",
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                 columns: new[] { "Id", "AccessFailedCount", "Avatar", "ConcurrencyStamp", "CreationDate", "Debit", "Discriminator", "DoB", "Email", "EmailConfirmed", "FirstName", "Gender", "IsActivated", "LastName", "LatestUpdate", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "Point", "SecurityStamp", "Spent", "TwoFactorEnabled", "UserName" },
                 values: new object[,]
                 {
                     { "1", 0, "", "e63031e1-99ba-4997-8063-53a705ae6902", new DateTime(2023, 11, 8, 12, 51, 50, 434, DateTimeKind.Local).AddTicks(644), 0.0, "User", new DateTime(2002, 3, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), "customer1@gmail.com", false, "Customer", "Male", true, "Customer", null, false, null, null, "customer1", "AQAAAAEAACcQAAAAEDq71Hb9VLJ42/0ZHOCnzjTmq4gCse1mUv/0awkEFLXG4n+lXkfx0Cnks5N7IQpfiw==", "1234567890", false, 0, "6966498b-6fef-4b96-801f-99df8b3c2946", 0.0, false, "customer1" },
                     { "2", 0, "", "3a490559-ac6c-41d6-8ca8-f1025a078ae6", new DateTime(2023, 11, 8, 12, 51, 50, 434, DateTimeKind.Local).AddTicks(733), 0.0, "User", new DateTime(2002, 8, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), "assistant1@gmail.com", false, "Assistant", "Female", true, "Assistant", null, false, null, null, "assistant1", "AQAAAAEAACcQAAAAEEb0z6vQmzNwdio1hKrnfRV2eSHFpYBtE0b98iWBuCy5ftzd+vSKrHcUo4K/WiZxqg==", "1234567890", false, 0, "203ffab4-1556-443a-a540-b1e2c2127356", 0.0, false, "assistant1" },
                     { "3", 0, "", "bf310ca5-1a62-4c2a-b676-311d2e5b42fa", new DateTime(2023, 11, 8, 12, 51, 50, 434, DateTimeKind.Local).AddTicks(765), 0.0, "User", new DateTime(2000, 5, 12, 0, 0, 0, 0, DateTimeKind.Unspecified), "manager1@gmail.com", false, "Manager", "Male", true, "Manager", null, false, null, null, "manager1", "AQAAAAEAACcQAAAAEPoKI8/rsf3dHAl35hTO7QWUwbag7hj1sO47jS1BRtE8v/2ec8sr+BdM7sPk0GNt5Q==", "1234567890", false, 0, "61a15692-fdff-4c30-991e-b284f1eed67d", 0.0, false, "manager1" }
+========
+                columns: new[] { "Id", "AccessFailedCount", "Avatar", "ConcurrencyStamp", "CreationDate", "Debit", "Discriminator", "DoB", "Email", "EmailConfirmed", "FirstName", "Gender", "LastName", "LatestUpdate", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "Spent", "Status", "TwoFactorEnabled", "UserName" },
+                values: new object[,]
+                {
+                    { "1", 0, "customer.jpg", "cbd44045-0ca9-4237-99a1-24050eb8d7fd", new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6341), 0.0, "User", new DateTime(2002, 3, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), "customer1@gmail.com", false, "Customer", "Male", "Customer", null, false, null, null, "customer1", "AQAAAAEAACcQAAAAEBwU7Zn7BiLGn5y3guGnRzDczwUcbkZyUzmhdYP+SPwUCamBAYIoG4ROng3GEGGncQ==", "1234567890", false, "17cad0b3-54bc-48d9-b3fb-d09f5a11bb5b", 0.0, "Activated", false, "customer1" },
+                    { "2", 0, "assistant.jpg", "5fbe3b83-9d43-4d5b-bd4a-9e3644924bf9", new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6370), 0.0, "User", new DateTime(2002, 8, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), "assistant1@gmail.com", false, "Assistant", "Female", "Assistant", null, false, null, null, "assistant1", "AQAAAAEAACcQAAAAEPPPkbBtKoLrpwFfcJwqFDfreD3pfyo1KYjXbWcw2sHxJwGnz7izrLBqmKbL2ApzDA==", "1234567890", false, "ff5fb428-ae2e-48b3-8b09-1846ee7d8cef", 0.0, "Activated", false, "assistant1" },
+                    { "3", 0, "manager.jpg", "99d76af5-a13a-40ef-8f5b-20b6db043d1b", new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6382), 0.0, "User", new DateTime(2000, 5, 12, 0, 0, 0, 0, DateTimeKind.Unspecified), "manager1@gmail.com", false, "Manager", "Male", "Manager", null, false, null, null, "manager1", "AQAAAAEAACcQAAAAEEJ7Gln/bW6asVktVGb1M9Kl5vNXbUeakE1ilgP0uj/w7ptVGOeMiOk0ksVHDXDzkg==", "1234567890", false, "351089ff-175f-4e37-a47e-aaef8cda35e3", 0.0, "Activated", false, "manager1" },
+                    { "4", 0, "admin.jpg", "29f731f6-82f7-4761-a4a1-6983295c7997", new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6391), 0.0, "User", new DateTime(2001, 7, 13, 0, 0, 0, 0, DateTimeKind.Unspecified), "admin1@gmail.com", false, "Admin", "Male", "Admin", null, false, null, null, "admin1", "AQAAAAEAACcQAAAAEL2Q17L4gI0k1O7naEuvB9HjSf0jMV0ZfhvPJXxMQ9L1m56hK+AjLtBJd5vAwkpetQ==", "1234567890", false, "57749cf3-bc56-4b14-93a4-3b721d20e936", 0.0, "Activated", false, "admin1" }
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                 });
 
             migrationBuilder.InsertData(
@@ -1163,6 +1225,7 @@ namespace OnlineShopping.Migrations
                 });
 
             migrationBuilder.InsertData(
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                 table: "Repositories",
                 columns: new[] { "RepositoryId", "AddressId", "Capacity", "CreationDate", "IsFull", "RepositoryName" },
                 values: new object[] { 1, 1, 50.0, new DateTime(2023, 11, 8, 12, 51, 50, 507, DateTimeKind.Local).AddTicks(1608), false, "Repository 1" });
@@ -1170,6 +1233,20 @@ namespace OnlineShopping.Migrations
             migrationBuilder.InsertData(
                 table: "Supliers",
                 columns: new[] { "SupplierId", "SupplierAddressId", "SupplierEmail", "SupplierImage", "SupplierName", "SupplierPhoneNums" },
+========
+                table: "Points",
+                columns: new[] { "PointId", "CustomerId", "Description", "History", "TotalPoint" },
+                values: new object[] { 1, "1", "Create account successfully +500 points", new DateTime(2023, 8, 29, 23, 21, 24, 352, DateTimeKind.Local).AddTicks(7238), 500 });
+
+            migrationBuilder.InsertData(
+                table: "Repositories",
+                columns: new[] { "RepositoryId", "AddressId", "Capacity", "CreationDate", "RepositoryName" },
+                values: new object[] { 1, 1, 50.0, new DateTime(2023, 8, 29, 23, 21, 24, 354, DateTimeKind.Local).AddTicks(1920), "Repository 1" });
+
+            migrationBuilder.InsertData(
+                table: "Supliers",
+                columns: new[] { "SuplierId", "SuplierAddressId", "SuplierEmail", "SuplierImage", "SuplierName", "SuplierPhoneNums" },
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                 values: new object[] { 1, 3, "suplieremail1@gmail.com", null, "Suplier 1", "012334546677" });
 
             migrationBuilder.InsertData(
@@ -1196,6 +1273,18 @@ namespace OnlineShopping.Migrations
                     { 1, 1, "Material Descriptint 1", null, "Material 1", 5 },
                     { 2, 1, "Material Descriptint 2", null, "Material 2", 4 },
                     { 3, 1, "Material Descriptint 3", null, "Material 3", 7 }
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
+========
+                });
+
+            migrationBuilder.InsertData(
+                table: "FurnitureRepositories",
+                columns: new[] { "FurnitureSpecificationId", "RepositoryId", "Available" },
+                values: new object[,]
+                {
+                    { 1, 1, 0 },
+                    { 2, 1, 0 }
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                 });
 
             migrationBuilder.InsertData(
@@ -1471,7 +1560,11 @@ namespace OnlineShopping.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                 name: "IX_Supliers_SupplierAddressId",
+========
+                name: "IX_Supliers_SuplierAddressId",
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                 table: "Supliers",
                 column: "SupplierAddressId",
                 unique: true);
@@ -1549,9 +1642,12 @@ namespace OnlineShopping.Migrations
                 name: "FurnitureRepositories");
 
             migrationBuilder.DropTable(
+<<<<<<<< HEAD:Migrations/20231108055151_createDb.cs
                 name: "FurnitureRepositoryHistories");
 
             migrationBuilder.DropTable(
+========
+>>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.cs
                 name: "FurnitureSpecificationAttachments");
 
             migrationBuilder.DropTable(
@@ -1574,6 +1670,9 @@ namespace OnlineShopping.Migrations
 
             migrationBuilder.DropTable(
                 name: "Posts");
+
+            migrationBuilder.DropTable(
+                name: "Results");
 
             migrationBuilder.DropTable(
                 name: "Results");
