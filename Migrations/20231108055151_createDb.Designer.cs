@@ -12,11 +12,7 @@ using OnlineShopping.Data;
 namespace OnlineShopping.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
     [Migration("20231108055151_createDb")]
-========
-    [Migration("20230829162124_createDb")]
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
     partial class createDb
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -408,9 +404,6 @@ namespace OnlineShopping.Migrations
                     b.Property<int>("OrderId")
                         .HasColumnType("int");
 
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int");
-
                     b.Property<int>("VoteStar")
                         .HasColumnType("int");
 
@@ -588,15 +581,6 @@ namespace OnlineShopping.Migrations
                 {
                     b.Property<string>("CustomizeFurnitureId")
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("CategoryId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ColorId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreationDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
@@ -865,7 +849,6 @@ namespace OnlineShopping.Migrations
 
                     b.Property<DateTime?>("ActualCompletionDate")
                         .HasColumnType("datetime2");
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
 
                     b.Property<string>("CustomizeFurnitureId")
                         .IsRequired()
@@ -886,27 +869,6 @@ namespace OnlineShopping.Migrations
                     b.HasIndex("CustomizeFurnitureId")
                         .IsUnique();
 
-========
-
-                    b.Property<int>("CustomizeFurnitureId")
-                        .HasColumnType("int");
-
-                    b.Property<double?>("ExpectedPrice")
-                        .HasColumnType("float");
-
-                    b.Property<string>("Reason")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("ResultId");
-
-                    b.HasIndex("CustomizeFurnitureId")
-                        .IsUnique();
-
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                     b.ToTable("Results");
                 });
 
@@ -957,14 +919,9 @@ namespace OnlineShopping.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                     b.Property<string>("CustomizeFurnitureId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
-========
-                    b.Property<int>("CustomizeFurnitureId")
-                        .HasColumnType("int");
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
 
                     b.Property<string>("Path")
                         .IsRequired()
@@ -1023,14 +980,9 @@ namespace OnlineShopping.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                     b.Property<string>("FurnitureSpecificationId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
-========
-                    b.Property<int>("FurnitureSpecificationId")
-                        .HasColumnType("int");
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
 
                     b.Property<string>("Path")
                         .IsRequired()
@@ -1075,7 +1027,6 @@ namespace OnlineShopping.Migrations
                     b.HasIndex("WarrantyId");
 
                     b.ToTable("WarrantyAttachments");
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Post", b =>
@@ -1117,8 +1068,6 @@ namespace OnlineShopping.Migrations
                     b.HasIndex("AuthorId");
 
                     b.ToTable("Posts");
-========
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Purchase.Cart", b =>
@@ -1209,14 +1158,9 @@ namespace OnlineShopping.Migrations
                     b.Property<double>("Cost")
                         .HasColumnType("float");
 
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                     b.Property<string>("FurnitureSpecificationId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
-========
-                    b.Property<int>("FurnitureSpecificationId")
-                        .HasColumnType("int");
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
 
                     b.Property<int>("OrderId")
                         .HasColumnType("int");
@@ -1345,24 +1289,7 @@ namespace OnlineShopping.Migrations
 
                     b.HasIndex("CustomerId");
 
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                     b.ToTable("PointHistories");
-========
-                    b.HasIndex("CustomerId")
-                        .IsUnique();
-
-                    b.ToTable("Points");
-
-                    b.HasData(
-                        new
-                        {
-                            PointId = 1,
-                            CustomerId = "1",
-                            Description = "Create account successfully +500 points",
-                            History = new DateTime(2023, 8, 29, 23, 21, 24, 352, DateTimeKind.Local).AddTicks(7238),
-                            TotalPoint = 500
-                        });
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Purchase.WishList", b =>
@@ -1743,12 +1670,8 @@ namespace OnlineShopping.Migrations
                             RepositoryId = 1,
                             AddressId = 1,
                             Capacity = 50.0,
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                             CreationDate = new DateTime(2023, 11, 8, 12, 51, 50, 507, DateTimeKind.Local).AddTicks(1608),
                             IsFull = false,
-========
-                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 354, DateTimeKind.Local).AddTicks(1920),
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                             RepositoryName = "Repository 1"
                         });
                 });
@@ -1768,17 +1691,10 @@ namespace OnlineShopping.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                     b.Property<string>("SupplierImage")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SupplierName")
-========
-                    b.Property<string>("SuplierImage")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SuplierName")
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
@@ -1841,12 +1757,9 @@ namespace OnlineShopping.Migrations
                     b.Property<DateTime?>("LatestUpdate")
                         .HasColumnType("datetime2");
 
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                     b.Property<int?>("Point")
                         .HasColumnType("int");
 
-========
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                     b.Property<double?>("Spent")
                         .HasColumnType("float");
 
@@ -1857,16 +1770,11 @@ namespace OnlineShopping.Migrations
                         {
                             Id = "1",
                             AccessFailedCount = 0,
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                             ConcurrencyStamp = "e63031e1-99ba-4997-8063-53a705ae6902",
-========
-                            ConcurrencyStamp = "cbd44045-0ca9-4237-99a1-24050eb8d7fd",
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                             Email = "customer1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "customer1",
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                             PasswordHash = "AQAAAAEAACcQAAAAEDq71Hb9VLJ42/0ZHOCnzjTmq4gCse1mUv/0awkEFLXG4n+lXkfx0Cnks5N7IQpfiw==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
@@ -1875,16 +1783,6 @@ namespace OnlineShopping.Migrations
                             UserName = "customer1",
                             Avatar = "",
                             CreationDate = new DateTime(2023, 11, 8, 12, 51, 50, 434, DateTimeKind.Local).AddTicks(644),
-========
-                            PasswordHash = "AQAAAAEAACcQAAAAEBwU7Zn7BiLGn5y3guGnRzDczwUcbkZyUzmhdYP+SPwUCamBAYIoG4ROng3GEGGncQ==",
-                            PhoneNumber = "1234567890",
-                            PhoneNumberConfirmed = false,
-                            SecurityStamp = "17cad0b3-54bc-48d9-b3fb-d09f5a11bb5b",
-                            TwoFactorEnabled = false,
-                            UserName = "customer1",
-                            Avatar = "customer.jpg",
-                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6341),
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                             Debit = 0.0,
                             DoB = new DateTime(2002, 3, 11, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Customer",
@@ -1898,16 +1796,11 @@ namespace OnlineShopping.Migrations
                         {
                             Id = "2",
                             AccessFailedCount = 0,
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                             ConcurrencyStamp = "3a490559-ac6c-41d6-8ca8-f1025a078ae6",
-========
-                            ConcurrencyStamp = "5fbe3b83-9d43-4d5b-bd4a-9e3644924bf9",
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                             Email = "assistant1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "assistant1",
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                             PasswordHash = "AQAAAAEAACcQAAAAEEb0z6vQmzNwdio1hKrnfRV2eSHFpYBtE0b98iWBuCy5ftzd+vSKrHcUo4K/WiZxqg==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
@@ -1916,16 +1809,6 @@ namespace OnlineShopping.Migrations
                             UserName = "assistant1",
                             Avatar = "",
                             CreationDate = new DateTime(2023, 11, 8, 12, 51, 50, 434, DateTimeKind.Local).AddTicks(733),
-========
-                            PasswordHash = "AQAAAAEAACcQAAAAEPPPkbBtKoLrpwFfcJwqFDfreD3pfyo1KYjXbWcw2sHxJwGnz7izrLBqmKbL2ApzDA==",
-                            PhoneNumber = "1234567890",
-                            PhoneNumberConfirmed = false,
-                            SecurityStamp = "ff5fb428-ae2e-48b3-8b09-1846ee7d8cef",
-                            TwoFactorEnabled = false,
-                            UserName = "assistant1",
-                            Avatar = "assistant.jpg",
-                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6370),
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                             Debit = 0.0,
                             DoB = new DateTime(2002, 8, 21, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Assistant",
@@ -1939,16 +1822,11 @@ namespace OnlineShopping.Migrations
                         {
                             Id = "3",
                             AccessFailedCount = 0,
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                             ConcurrencyStamp = "bf310ca5-1a62-4c2a-b676-311d2e5b42fa",
-========
-                            ConcurrencyStamp = "99d76af5-a13a-40ef-8f5b-20b6db043d1b",
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                             Email = "manager1@gmail.com",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedUserName = "manager1",
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                             PasswordHash = "AQAAAAEAACcQAAAAEPoKI8/rsf3dHAl35hTO7QWUwbag7hj1sO47jS1BRtE8v/2ec8sr+BdM7sPk0GNt5Q==",
                             PhoneNumber = "1234567890",
                             PhoneNumberConfirmed = false,
@@ -1957,54 +1835,14 @@ namespace OnlineShopping.Migrations
                             UserName = "manager1",
                             Avatar = "",
                             CreationDate = new DateTime(2023, 11, 8, 12, 51, 50, 434, DateTimeKind.Local).AddTicks(765),
-========
-                            PasswordHash = "AQAAAAEAACcQAAAAEEJ7Gln/bW6asVktVGb1M9Kl5vNXbUeakE1ilgP0uj/w7ptVGOeMiOk0ksVHDXDzkg==",
-                            PhoneNumber = "1234567890",
-                            PhoneNumberConfirmed = false,
-                            SecurityStamp = "351089ff-175f-4e37-a47e-aaef8cda35e3",
-                            TwoFactorEnabled = false,
-                            UserName = "manager1",
-                            Avatar = "manager.jpg",
-                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6382),
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                             Debit = 0.0,
                             DoB = new DateTime(2000, 5, 12, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Manager",
                             Gender = "Male",
                             IsActivated = true,
                             LastName = "Manager",
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                             Point = 0,
                             Spent = 0.0
-========
-                            Spent = 0.0,
-                            Status = "Activated"
-                        },
-                        new
-                        {
-                            Id = "4",
-                            AccessFailedCount = 0,
-                            ConcurrencyStamp = "29f731f6-82f7-4761-a4a1-6983295c7997",
-                            Email = "admin1@gmail.com",
-                            EmailConfirmed = false,
-                            LockoutEnabled = false,
-                            NormalizedUserName = "admin1",
-                            PasswordHash = "AQAAAAEAACcQAAAAEL2Q17L4gI0k1O7naEuvB9HjSf0jMV0ZfhvPJXxMQ9L1m56hK+AjLtBJd5vAwkpetQ==",
-                            PhoneNumber = "1234567890",
-                            PhoneNumberConfirmed = false,
-                            SecurityStamp = "57749cf3-bc56-4b14-93a4-3b721d20e936",
-                            TwoFactorEnabled = false,
-                            UserName = "admin1",
-                            Avatar = "admin.jpg",
-                            CreationDate = new DateTime(2023, 8, 29, 23, 21, 24, 323, DateTimeKind.Local).AddTicks(6391),
-                            Debit = 0.0,
-                            DoB = new DateTime(2001, 7, 13, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            FirstName = "Admin",
-                            Gender = "Male",
-                            LastName = "Admin",
-                            Spent = 0.0,
-                            Status = "Activated"
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                         });
                 });
 
@@ -2264,7 +2102,6 @@ namespace OnlineShopping.Migrations
                         .IsRequired();
 
                     b.Navigation("Warranty");
-<<<<<<<< HEAD:Migrations/20231108055151_createDb.Designer.cs
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Post", b =>
@@ -2276,8 +2113,6 @@ namespace OnlineShopping.Migrations
                         .IsRequired();
 
                     b.Navigation("Author");
-========
->>>>>>>> 5b0a69d7a9c81e56becf4afd48b7938d77f2faca:Migrations/20230829162124_createDb.Designer.cs
                 });
 
             modelBuilder.Entity("OnlineShopping.Models.Purchase.Cart", b =>
