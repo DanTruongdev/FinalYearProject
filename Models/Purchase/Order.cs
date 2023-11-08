@@ -10,24 +10,26 @@ namespace OnlineShopping.Models.Purchase
         public int OrderId { get; set; }
         [Required]
         public string CustomerId { get; set; }
- 
-        public int? PaymentId { get; set; }
+        [Required]
+        public int PaymentId { get; set; }
         public int? UsedPoint { get; set; } = 0;
-        [NotMapped]
-        public string Address { get; set; }
+        public string DeliveryAddress { get; set; }
+        public string? Note { get; set; }
         [Required]
         [StringLength(20, MinimumLength = 2,
            ErrorMessage = "Status cannot be less than 2 characters or exceed 20 characters")]
         public string Status { get; set; }
         [Required]
+        public bool IsPaid { get; set; }
+        [Required]
         public DateTime OrderDate { get; set; }
-        [NotMapped]
         public double TotalCost { get; set; }
         //
-        public User Customer { get; set; }
-        public Payment? Payment { get; set; }
-        public ICollection<FurnitureOrderDetail> FurnitureOrderDetails { get; set; }
-        public ICollection<CustomizeFurnitureOrderDetail> CustomizeFurnitureOrderDetails { get; set; }
-        public ICollection<WarrantySchedule>? WarrantySchedules { get; set; }
+        public virtual User Customer { get; set; }
+        public virtual Payment Payment { get; set; }
+        public virtual ICollection<FurnitureOrderDetail> FurnitureOrderDetails { get; set; }
+        public virtual ICollection<CustomizeFurnitureOrderDetail> CustomizeFurnitureOrderDetails { get; set; }
+        public virtual ICollection<Warranty>? Warranties { get; set; }
+        public virtual ICollection<Feedback>? Feedbacks { get; set; }
     }
 }

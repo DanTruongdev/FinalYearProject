@@ -11,6 +11,6 @@ namespace OnlineShopping.Models.Purchase
           ErrorMessage = "Payment method cannot be less than 2 characters or exceed 30 characters")]
         public string PaymentMethod { get; set; }
         //
-        public ICollection<Order> Orders { get; set; }
+        public virtual ICollection<Order> Orders { get; set; }
     }
 }

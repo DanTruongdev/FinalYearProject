@@ -12,14 +12,15 @@ namespace OnlineShopping.Models.Warehouse
         public string UserId { get; set; }
         [Required]
         public int RepositoryId { get; set; }
-        [NotMapped]
-        public string Address { get; set; }
-        [NotMapped]
-        public double TotalCost { get; set; }
-        public string Status { get; set; }
+        public string? BillImage { get; set; }
+        [Required]
+        public DateTime CreationDate { get; set; }
+        public DateTime? DeliveryDate { get; set; }
+
+        public string Status { get; set; } //2 status: Processing and Delivered.
         //
-        public ICollection<ImportDetail> ImportDetails { get; set; }
-        public Repository Repository { get; set; }
-        public User User { get; set; }
+        public virtual ICollection<ImportDetail> ImportDetails { get; set; }
+        public virtual Repository Repository { get; set; }
+        public virtual User User { get; set; }
     }
 }
