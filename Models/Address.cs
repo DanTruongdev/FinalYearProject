@@ -11,25 +11,29 @@ namespace OnlineShopping.Models
         public int AddressId { get; set; }
         [Required]
         [StringLength(30, MinimumLength = 2,
-          ErrorMessage = "Address cannot be less than 2 characters or exceed 30 characters")]
+          ErrorMessage = "Street cannot be less than 2 characters or exceed 30 characters")]
         public string Street { get; set; }
         [Required]
         [StringLength(30, MinimumLength = 2,
-          ErrorMessage = "Address cannot be less than 2 characters or exceed 30 characters")]
-        public string Commune { get; set; }
+          ErrorMessage = "Ward cannot be less than 2 characters or exceed 30 characters")]
+        public string Ward { get; set; }
         [Required]
         [StringLength(20, MinimumLength = 2,
-          ErrorMessage = "Address cannot be less than 2 characters or exceed 20 characters")]
+          ErrorMessage = "District cannot be less than 2 characters or exceed 20 characters")]
         public string District { get; set; }
         [Required]
         [StringLength(20, MinimumLength = 2,
-          ErrorMessage = "Address cannot be less than 2 characters or exceed 20 characters")]
+          ErrorMessage = "Provine cannot be less than 2 characters or exceed 20 characters")]
         public string Provine { get; set; }
         public string AddressOwner { get; set; }
+        public override string ToString()
+        {
+            return $"{Street}, {Ward}, {District}, {Provine}";
+        }
         //
-        public Suplier? Suplier { get; set; }   
-        public Repository? Repository { get; set; }
-        public ICollection<UserAddress>? UserAddresses { get; set; }
+        public virtual Supplier? Supplier { get; set; }   
+        public virtual Repository? Repository { get; set; }
+        public virtual ICollection<UserAddress>? UserAddresses { get; set; }
      
     }
 }

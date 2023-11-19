@@ -1,0 +1,19 @@
+{
+  "Version": 1,
+  "Hash": "eqWS4cnxwG5DYK3Os8Xfry3AZ9+edmp2KFL2QFwT2jk=",
+  "Source": "OnlineShopping",
+  "BasePath": "_content/OnlineShopping",
+  "Mode": "Default",
+  "ManifestType": "Publish",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [
+    {
+      "Name": "OnlineShopping\\wwwroot",
+      "Source": "OnlineShopping",
+      "ContentRoot": "D:\\FinalYearProject\\Project\\BackEnd\\OnlineShopping\\wwwroot\\",
+      "BasePath": "_content/OnlineShopping",
+      "Pattern": "**"
+    }
+  ],
+  "Assets": []
+}

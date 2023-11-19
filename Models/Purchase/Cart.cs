@@ -9,7 +9,7 @@ namespace OnlineShopping.Models.Purchase
         [Required]
         public string CustomerId { get; set; }
         //
-        public User Customer { get; set; }
-        public ICollection<CartDetail> CartDetails { get; set; }
+        public virtual User Customer { get; set; }
+        public virtual ICollection<CartDetail> CartDetails { get; set; }
     }
 }
