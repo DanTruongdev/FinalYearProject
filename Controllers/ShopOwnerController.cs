@@ -1,8 +1,10 @@
-﻿using Castle.Core.Internal;
+﻿using Bogus.DataSets;
+using Castle.Core.Internal;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Newtonsoft.Json;
 using OnlineShopping.Data;
 using OnlineShopping.Hubs;
@@ -14,9 +16,11 @@ using OnlineShopping.Models.Gallery;
 using OnlineShopping.Models.Warehouse;
 using OnlineShopping.ViewModels;
 using OnlineShopping.ViewModels.Furniture;
+using OnlineShopping.ViewModels.User;
 using OnlineShopping.ViewModels.Warehouse;
+using Org.BouncyCastle.Ocsp;
 using System.ComponentModel.DataAnnotations;
-using System.Net.Mail;
+
 
 namespace OnlineShopping.Controllers
 {
@@ -120,23 +124,6 @@ namespace OnlineShopping.Controllers
         }
 
         //CRUD supplier
-        [HttpGet("shop-data/suppliers/search")]
-        public async Task<IActionResult> SearchRepositories(string searchString)
-        {
-            var supliers = await _dbContext.Supliers.Where(r => r.SupplierName.Contains(searchString)).ToListAsync();
-            if (supliers.IsNullOrEmpty()) return Ok(new List<Supplier>());
-            var response = supliers.Select(s => new
-            {
-                SuppllierId = s.SupplierId,
-                SupplierName = s.SupplierName,
-                SupplierAddress = s.Address.ToString(),
-                SupplierImage = _firebaseService.GetDownloadUrl(s.SupplierImage),
-                SupplierEmail = s.SupplierEmail,
-                SupplierPhoneNum = s.SupplierPhoneNums
-            }) ;
-            return Ok(response);
-        }
-
         [HttpGet("shop-data/suppliers")]
         public async Task<IActionResult> GetSupplier()
         {
@@ -278,18 +265,13 @@ namespace OnlineShopping.Controllers
 
 
         //view import history
-
+         
 
         //export csv
 
 
 
         //furniture/furniture specification, category, collection
-        [HttpGet("shop-data/furnitures/search")]
-        public async Task<IActionResult> SearchFurnitures(string searchString)
-        {
-            return RedirectToAction("SearchFurniture", "Customer", new string[] {searchString});
-        }
 
         [HttpGet("shop-data/furniures")]
         public async Task<IActionResult> GetAllFurnitures()
@@ -366,9 +348,8 @@ namespace OnlineShopping.Controllers
                 Description = userInput.Description
             };
             await _dbContext.AddAsync(newFurnitureSpecification);
-            await _dbContext.SaveChangesAsync();
 
-            if (userInput.UploadFiles.Count > 0)
+            if (userInput.UploadFiles.IsNullOrEmpty())
             {
                 foreach (var file in userInput.UploadFiles)
                 {
@@ -400,11 +381,7 @@ namespace OnlineShopping.Controllers
                     ColorId = newFurnitureSpecification.ColorId,
                     WoodId = newFurnitureSpecification.WoodId,
                     Price = newFurnitureSpecification.Price,
-                    Description = newFurnitureSpecification.Description,
-                    Images = newFurnitureSpecification.Attachments.IsNullOrEmpty() ? new string[] { } : 
-                        newFurnitureSpecification.Attachments.Where(a => a.Type.Equals("images")).Select(a => _firebaseService.GetDownloadUrl(a.Path)),
-                    Videos = newFurnitureSpecification.Attachments.IsNullOrEmpty() ? new string[] {} :
-                        newFurnitureSpecification.Attachments.Where(a => a.Type.Equals("videos")).Select(a => _firebaseService.GetDownloadUrl(a.Path))
+                    Description = newFurnitureSpecification.Description
                 });
             }
             catch
@@ -413,9 +390,6 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when create new furniture specification"));
             }
         }
-
-       
-
 
         [HttpPut("shop-data/furnitures/edit")]
         public async Task<IActionResult> UpdateFurniturue([FromForm] EditFurnitureViewModel userInput)

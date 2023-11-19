@@ -19,7 +19,6 @@ using OnlineShopping.ViewModels.Login;
 using OnlineShopping.ViewModels.Post;
 using OnlineShopping.ViewModels.User;
 using OnlineShopping.ViewModels.Warehouse;
-using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Ocsp;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
@@ -489,7 +488,7 @@ namespace OnlineShopping.Controllers
             }
         }
 
-        [HttpDelete("shop-data/materials/delete/{materialId}")]
+        [HttpPut("shop-data/materials/delete/{materialId}")]
         public async Task<IActionResult> RemoveMaterial([FromRoute] int materialId)
         {
             Material materialExist = await _dbContext.Materials.FindAsync(materialId);
@@ -546,7 +545,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpPost("warehouse/material/imports/create")]
-        public async Task<IActionResult> CreateImports([FromBody] ImportMaterialViewModel userInput)
+        public async Task<IActionResult> CreateImports(ImportMaterialViewModel userInput)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Logged in user not found ");
@@ -739,23 +738,6 @@ namespace OnlineShopping.Controllers
         }
 
         //Repository 
-        [HttpGet("warehouse/repositories/search")]
-        public async Task<IActionResult> SearchRepositories(string searchString)
-        {
-            var repositories = await _dbContext.Repositories.Where(r => r.RepositoryName.Contains(searchString)).ToListAsync();
-            if (repositories.IsNullOrEmpty()) return Ok(new List<Repository>());
-            var response = repositories.Select(r => new
-            {
-                RepositoryId = r.RepositoryId,
-                RepositoryName = r.RepositoryName,
-                Address = r.Address.ToString(),
-                Capacity = r.Capacity,
-                IsFull = r.IsFull,
-                CreationDate = r.CreationDate
-            });
-            return Ok(response);
-
-        }
         [HttpGet("warehouse/repositories")]
         public async Task<IActionResult> GetRepositories()
         {
@@ -1423,7 +1405,7 @@ namespace OnlineShopping.Controllers
             return File(bytes, "text/csv", "Furniture_repository_history.csv");
         }
 
-        [HttpGet("warehouse/repositories/material-repository-history/to-csv" )]
+        [HttpGet("warehouse/repositories/material-repository-history/to-csv")]
         public async Task<IActionResult> GetMaterialRepositoryHistoryCSV()
         {
             var data = _dbContext.MaterialRepositoryHistories;

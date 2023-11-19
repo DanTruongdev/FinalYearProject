@@ -108,12 +108,12 @@ namespace OnlineShopping.Controllers
                     Wood = fs.Wood.WoodType,
                     Price = fs.Price,
                     Description = fs.Description,
-                    Images = fs.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
+                    Images = fs.Attachments.Where(a => a.Type.Equals("Images")).Select(a => new
                     {
                         AttachmentName = a.AttachmentName,
                         Path = _firebaseService.GetDownloadUrl(a.Path)
                     }),
-                    Videos = fs.Attachments.Where(a => a.Type.Equals("vfeideos")).Select(a => new
+                    Videos = fs.Attachments.Where(a => a.Type.Equals("Videos")).Select(a => new
                     {
                         AttachmentName = a.AttachmentName,
                         Path = _firebaseService.GetDownloadUrl(a.Path)
@@ -131,13 +131,16 @@ namespace OnlineShopping.Controllers
             return Ok(responses);           
         }
 
-        [HttpGet("furnitures/search")] 
+        [HttpGet("furnitures/search")] // lack of available
         [AllowAnonymous] 
-        public async Task<IActionResult> SearchFurnitureF(string keyword)
+        public async Task<IActionResult> SearchFurniture(string keyword)
         {
             if (!keyword.IsNullOrEmpty()) keyword = keyword.ToUpper();
             var result = await _dbContext.Furnitures.Where(f => f.FurnitureName.ToUpper().Contains(keyword)).ToListAsync();
-            if (result.IsNullOrEmpty()) return Ok(new List<Furniture>());
+            if (result.Count == 0)
+            {
+                return NotFound();
+            }
             var response = result.Select(f => new
             {
                 FurnitureId = f.FurnitureId,
@@ -185,13 +188,12 @@ namespace OnlineShopping.Controllers
         {
 
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Logged in user not found ");
+            if (email == null) return NotFound("Loggined user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             var cartDetail = await _dbContext.CartDetails.Include(cd => cd.FurnitureSpecifition).Include(cd => cd.FurnitureSpecifition.Furniture)
                 .Where(cd => cd.CartId == loggedInUser.Cart.CartId).ToListAsync();
             var usercCart = cartDetail.Select(cd => new
             {
-                CartDetailId = cd.CartDetailId,
                 FurnitureId = cd.FurnitureSpecifition.Furniture.FurnitureId,
                 FurnitureName = cd.FurnitureSpecifition.Furniture.FurnitureName,
                 FurnitureSpecificationId = cd.FurnitureSpecificationId,
@@ -630,26 +632,26 @@ namespace OnlineShopping.Controllers
         //NOW                                                                             //CHECKOUT
         [HttpGet("checkout-now")]
         [Authorize(Roles = "CUSTOMER")] 
-        public async Task<IActionResult> CheckoutNow([Required] string furnitureSpecificationId, [Required] int Quantity)
+        public async Task<IActionResult> CheckoutNow(string furnitureSpecificationId, int Quantity)
         {
+            if (furnitureSpecificationId.IsNullOrEmpty() || Quantity < 1) return BadRequest("FurniturSpecficationID or quantity is required");
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Logged in user not found ");
-            var loggedInUser = await _userManager.FindByEmailAsync(email);
-            string  checkCustomerInfor = _projectHelper.CheckInforVerify(loggedInUser);
-            if (!checkCustomerInfor.IsNullOrEmpty()) return StatusCode(StatusCodes.Status405MethodNotAllowed,
-                new Response("Error", checkCustomerInfor));
+            if (email == null) return NotFound("Loggined user not found ");
+            var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
+            //var checkCustomerInfor = CheckCustomerInfor(loggedInUser);
+            //if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
+            //    new Response() { Status = "Error", Message = checkCustomerInfor });
             var orderFurniture = await _dbContext.FurnitureSpecifications.FindAsync(furnitureSpecificationId);
-            if (orderFurniture == null) return NotFound($"Furnitur specfication with id = {furnitureSpecificationId} is not exist");
-            int available = orderFurniture.FurnitureRepositories == null ? 0 : orderFurniture.FurnitureRepositories.Sum(fr => fr.Available);
-            if (available == 0) return StatusCode(StatusCodes.Status403Forbidden,
-                new Response("Error", "The furniture specification is out of stock"));
+            if (orderFurniture == null) return NotFound("FurniturSpecficationID is not exist");
+            int available = orderFurniture.FurnitureRepositories.Sum(fr => fr.Available);
+            //if (available == 0) return StatusCode(StatusCodes.Status403Forbidden,
+            //    new Response() { Status = "Error", Message = "Out of this furniture" });
             var paymentMethods = await _dbContext.Payments.Select(p => new
             {
                 PaymentId = p.PaymentId,
                 PaymentMethod = p.PaymentMethod
             }).ToListAsync();
             var deliveryAddress = loggedInUser.UserAddresses.FirstOrDefault(ua => ua.AddressType.Equals("DEFAULT"));
-            if (deliveryAddress == null) return NotFound(new Response("Error", "User must add address before check out"));
             var response = new
             {
                 DeliveryAddressId = deliveryAddress.AddressId,
@@ -658,7 +660,7 @@ namespace OnlineShopping.Controllers
                 FurnitureName = orderFurniture.Furniture.FurnitureName,
                 FurnitureSpecificationId = furnitureSpecificationId,
                 FurnitureSpecificationName = orderFurniture.FurnitureSpecificationName,
-                FurnitureSpecificationImage = orderFurniture.Attachments.IsNullOrEmpty() ? "" : _firebaseService.GetDownloadUrl(orderFurniture.Attachments.First().Path),
+                FurnitureSpecificationImage = orderFurniture.Attachments.Count > 0 ? _firebaseService.GetDownloadUrl(orderFurniture.Attachments.First().Path) : "",
                 Quantity = Quantity,
                 Payments = paymentMethods,
                 TotalCost = Math.Round(orderFurniture.Price * Quantity, 2)
@@ -763,7 +765,7 @@ namespace OnlineShopping.Controllers
                                                                                             //ORDER
         [HttpPost("order")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> Order([FromBody] OrderViewModel model)
+        public async Task<IActionResult> Order(OrderViewModel model)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Loggined user not found ");
@@ -806,7 +808,7 @@ namespace OnlineShopping.Controllers
                     var furnitureExist  = await _dbContext.FurnitureSpecifications.FindAsync(item.ItemId);
                     if (furnitureExist == null) return BadRequest($"The furniture with id = {item.ItemId} was not found");
                     if (furnitureExist.FurnitureRepositories.IsNullOrEmpty() || furnitureExist.FurnitureRepositories.Sum(fr => fr.Available) == 0)
-                        return BadRequest($"Cannot order furniture with id = {furnitureExist.FurnitureId} because it is out of stock"); 
+                        return BadRequest($"Cannot order furniture with id = {furnitureExist} because it is out of stock"); 
                     var orderItem = new FurnitureOrderDetail()
                     {
 
@@ -932,7 +934,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> GetOrder(string status)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Logged in user not found ");
+            if (email == null) return NotFound("Loggined user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             var orderList = new List<Order>();
             if (status.Equals("All")) orderList = loggedInUser.Orders.ToList();
@@ -955,7 +957,6 @@ namespace OnlineShopping.Controllers
                     var data = new
                     {
                         OrderId = order.OrderId,
-                        DeliveryAddress = order.DeliveryAddress,
                         Furniture = furnitures,
                         PaymentMethod = order.Payment.PaymentMethod,
                         TotalCost = order.TotalCost,
@@ -985,8 +986,7 @@ namespace OnlineShopping.Controllers
                 FurnitureName = fb.FurnitureSpecification.Furniture.FurnitureName,
                 FeedbackImages = fb.Attachements.Count > 0 ? fb.Attachements.Select(a => new
                 {
-                    url = _firebaseService.GetDownloadUrl(a.Path),
-                    type = a.Type
+                    url = _firebaseService.GetDownloadUrl(a.Path)
                 }) : null,
                 Content = fb.Content,
                 VoteStar = fb.VoteStar
@@ -996,7 +996,7 @@ namespace OnlineShopping.Controllers
 
         [HttpPost("create-feedback")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> CreationFeedback([FromForm] FeedbackViewModel model)
+        public async Task<IActionResult> CreationFeedback([FromForm]FeedbackViewModel model)
         {
             //validation
             var email = User.FindFirstValue(ClaimTypes.Email);

@@ -23,7 +23,6 @@ using Microsoft.OpenApi.Models;
 using RestSharp;
 using System.Threading;
 using Org.BouncyCastle.Crypto.Operators;
-using Org.BouncyCastle.Utilities.Net;
 
 namespace OnlineShopping.Libraries.Services
 {
@@ -197,9 +196,8 @@ namespace OnlineShopping.Libraries.Services
             vnpay.AddRequestData("vnp_BankCode", payment.PaymentMethod);
             vnpay.AddRequestData("vnp_CreateDate", order.OrderDate.ToString("yyyyMMddHHmmss"));
             vnpay.AddRequestData("vnp_CurrCode", "VND");
-            //string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString() == null ? "::1" : Response.HttpContext.Connection.RemoteIpAddress.ToString();
-            //if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
-            string ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
+            string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString();
+            if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
             vnpay.AddRequestData("vnp_IpAddr", ipAddress);
             vnpay.AddRequestData("vnp_Locale", "en");
             vnpay.AddRequestData("vnp_OrderInfo", "Payment orders:" + order.OrderId);

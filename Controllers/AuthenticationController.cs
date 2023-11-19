@@ -15,8 +15,6 @@ using System.ComponentModel.DataAnnotations;
 using OnlineShopping.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using OnlineShopping.Hubs.Models;
-using Bogus.DataSets;
-using Newtonsoft.Json.Linq;
 
 namespace OnlineShopping.Controllers
 {
@@ -214,14 +212,12 @@ namespace OnlineShopping.Controllers
 
                         await _signInManager.SignInAsync(userWithExternalMail, isPersistent: false);
                         var jwtToken = _projectHelper.GenerateJWTToken(userWithExternalMail, await _userManager.GetRolesAsync(userWithExternalMail));
-                        var response = new
+                        //return the token
+                        return Ok(new
                         {
                             token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
                             expiration = jwtToken.ValidTo
-                        };
-                        _hubContext.Clients.All.SendAsync("ReceivedJWTToken", new JwtToken(new JwtSecurityTokenHandler().WriteToken(jwtToken), jwtToken.ValidTo));
-                        //return the token
-                        return Ok(response);
+                        });
                     }
                     else
                     {
@@ -340,9 +336,9 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> ResetPassword(string token, string email)
         {
             var model = new ResetPassword { Email = email, Token = token };
-            _hubContext.Clients.All.SendAsync("ReceiveResetPassword", model);
             return Ok(new { model });
         }
+
         [HttpPost("reset-password")]
         [AllowAnonymous]
 
