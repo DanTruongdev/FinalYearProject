@@ -10,6 +10,7 @@ using OnlineShopping.Libraries.Models;
 using OnlineShopping.Libraries.Services;
 using OnlineShopping.Models;
 using OnlineShopping.Models.Customer;
+using OnlineShopping.Models.Warehouse;
 using OnlineShopping.ViewModels;
 using OnlineShopping.ViewModels.Address;
 using OnlineShopping.ViewModels.User;
@@ -48,10 +49,41 @@ namespace OnlineShopping.Controllers
         }
 
         //ADD account in authentication controller
+        //Search
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchUser(string searchString)
+        {
+            var users = await _userManager.Users.Where(u => u.FirstName.Contains(searchString) || u.LastName.Contains(searchString) || u.Email.Contains(searchString)).ToListAsync();
+            if (users.IsNullOrEmpty()) return Ok(new List<User>());
+            var response = users.Select(u => new
+            {
+                UserId = u.Id,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                DoB = u.DoB,
+                Gender = u.Gender,
+                UserName = u.Email,
+                Role = _userManager.GetRolesAsync(u).Result.FirstOrDefault(),
+                PhoneNumber = u.PhoneNumber,
+                PhoneNumberConfirmed = u.PhoneNumberConfirmed,
+                Email = u.Email,
+                EmailConfirmed = u.EmailConfirmed,
+                Avatar = _firebaseService.GetDownloadUrl(u.Avatar),
+                CreationDate = u.CreationDate,
+                LatestUpdate = u.LatestUpdate,
+                IsActivated = u.IsActivated,
+                TwoFactorEnabled = u.IsActivated,
+                Debit = u.Debit,
+                Spent = u.Spent,
+                Point = u.Point
+
+            });
+            return Ok(response);
+        }
 
         //View all {shop-owner}
         [HttpGet("all")]
-        public async Task<IActionResult> GetAllAccount(string roleId)
+        public async Task<IActionResult> GetAllUser([FromQuery] string? roleId)
         {
             string userRole = "ALL";
             if (!roleId.IsNullOrEmpty())
@@ -69,7 +101,7 @@ namespace OnlineShopping.Controllers
                 DoB = d.DoB,
                 Gender = d.Gender,
                 UserName = d.Email,
-                Role = _userManager.GetRolesAsync(d),
+                Role = _userManager.GetRolesAsync(d).Result.FirstOrDefault(),
                 PhoneNumber = d.PhoneNumber,
                 Email = d.Email,
                 Avatar = _firebaseService.GetDownloadUrl(d.Avatar),
@@ -85,7 +117,7 @@ namespace OnlineShopping.Controllers
 
         //detail {all}
         [HttpGet("detail")]
-        public async Task<IActionResult> GetAccountDetails()
+        public async Task<IActionResult> GetUserDetail()
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return Unauthorized(new Response("Error", "Logged in user not found "));
@@ -228,7 +260,7 @@ namespace OnlineShopping.Controllers
 
         }
 
-        //PHONE NUMBER - shop owner not allow edit phone number of other role
+        //PHONE NUMBER - shop owner not allows edit phone number of other role
 
         [HttpGet("individual/phone-number/get-otp")]
         public async Task<IActionResult> SendOTPConfirmation([Required] string phoneNums)
@@ -251,29 +283,29 @@ namespace OnlineShopping.Controllers
 
         //ADD
         [HttpPost("individual/phone-number/add")]
-
         public async Task<IActionResult> AddPhoneNumber(string phoneNumber, string otp)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged user not found ");
             var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
+           
             var result = await _projectHelper.VerifyPhoneNum(phoneNumber, otp);
             if (!result) return StatusCode(StatusCodes.Status406NotAcceptable,
                 new Response("Error", "The OTP is not correct"));
             loggedInUser.PhoneNumber = phoneNumber;
             loggedInUser.PhoneNumberConfirmed = true;
-            await _dbContext.AddAsync(loggedInUser);
+            _dbContext.Update(loggedInUser);
             await _dbContext.SaveChangesAsync();
             return Accepted("Add phone number successfully");
         }
 
         //UPDATE
-        [HttpPut("customer-infor/phone-number/update")]
+        [HttpPut("individual/phone-number/update")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> ChangeCustomerPhoneNum(string phoneNumber, string otp)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged user not found ");
             var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
             var result = await _projectHelper.VerifyPhoneNum(phoneNumber, otp);
             if (!result)
@@ -377,9 +409,9 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> GetCustomerAddress()
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
-            var addressList = await _dbContext.UserAddresses.Where(a => a.UserId.Equals(loggedInUser.Id)).Select(a => new
+            var addressList = loggedInUser.UserAddresses.Select(a => new
             {
                 Id = a.Address.AddressId,
                 Street = a.Address.Street,
@@ -387,9 +419,8 @@ namespace OnlineShopping.Controllers
                 District = a.Address.District,
                 Provine = a.Address.Provine,
                 AddressType = a.AddressType
-            }
-            ).ToListAsync();
-            if (addressList.Count == 0) return NotFound("User has no address added");
+            });
+            if (addressList.Count() == 0) return NotFound("User has no address added");
             return Ok(addressList);
         }
 
@@ -398,15 +429,15 @@ namespace OnlineShopping.Controllers
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> AddCustomerAddress([FromForm] AddCustomerAddressViewModel userInput)
         {
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            if (email == null) return NotFound("Logged in user not found ");
+            var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
             if (userInput.Type.Equals("DEFAULT"))
             {
-                var defaultAddress = await _dbContext.UserAddresses.FirstOrDefaultAsync(ua => ua.AddressType.Equals("DEFAULT"));
+                var defaultAddress = loggedInUser.UserAddresses.FirstOrDefault(ua => ua.AddressType.Equals("DEFAULT"));
                 if (defaultAddress != null) return StatusCode(StatusCodes.Status406NotAcceptable,
                     new Response("Error", "Cannot set more than one default address"));
             }
-            var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
-            var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
             var newAddress = new Models.Address()
             {
                 Street = userInput.Street,

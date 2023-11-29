@@ -18,7 +18,7 @@ namespace OnlineShopping.Libraries.Services
         public Task<bool> CreateLogAsync(string assistantId, string activity);
 
         public Task<bool> CreateAnnouncementAsync(string assistantId, string title, string content);
-
+        public bool CheckUserAddress(User user);
         public string FilterBadWords(string input);
 
     }

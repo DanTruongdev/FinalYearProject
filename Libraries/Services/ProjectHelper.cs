@@ -23,6 +23,7 @@ using Microsoft.OpenApi.Models;
 using RestSharp;
 using System.Threading;
 using Org.BouncyCastle.Crypto.Operators;
+using Org.BouncyCastle.Utilities.Net;
 
 namespace OnlineShopping.Libraries.Services
 {
@@ -58,8 +59,10 @@ namespace OnlineShopping.Libraries.Services
             var vnp_TransactionDate = transition.PayDate;
             var vnp_CreateDate = DateTime.Now.ToString("yyyyMMddHHmmss");
             var vnp_CreateBy = order.Customer.UserName;
-            string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString();
-            if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
+            //string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString();
+            //if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
+
+            string ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
             var vnp_IpAddr = ipAddress;
 
             var signData = vnp_RequestId + "|" + vnp_Version + "|" + vnp_Command + "|" + vnp_TmnCode + "|" + vnp_TransactionType + "|" + vnp_TxnRef + "|" + vnp_Amount + "|" + vnp_TransactionNo + "|" + vnp_TransactionDate + "|" + vnp_CreateBy + "|" + vnp_CreateDate + "|" + vnp_IpAddr + "|" + vnp_OrderInfo;
@@ -116,8 +119,9 @@ namespace OnlineShopping.Libraries.Services
             var vnp_TransactionDate = order.OrderDate.ToString("yyyyMMdd");
             var vnp_CreateDate = DateTime.Now.ToString("yyyyMMddHHmmss");
 
-            string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString();
-            if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
+            //string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString();
+            //if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
+            string  ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
             var vnp_IpAddr = ipAddress;
 
             var signData = vnp_RequestId + "|" + vnp_Version + "|" + vnp_Command + "|" + vnp_TmnCode + "|" + vnp_TxnRef + "|" + vnp_TransactionDate + "|" + vnp_CreateDate + "|" + vnp_IpAddr + "|" + vnp_OrderInfo;
@@ -175,10 +179,10 @@ namespace OnlineShopping.Libraries.Services
             var order = _dbContext.Orders.FirstOrDefault(o => o.OrderId == orderId);
 
             //Get Config Info
-            string vnp_Returnurl = _config["VNPAY:ReturnUrl"]; //URL nhan ket qua tra ve 
-            string vnp_Url = _config["VNPAY:Url"]; //URL thanh toan cua VNPAY 
-            string vnp_TmnCode = _config["VNPAY:TmnCode"]; //Ma định danh merchant kết nối (Terminal Id)
-            string vnp_HashSecret = _config["VNPAY:HashSecret"]; //Secret Key
+            string vnp_Returnurl = _config["VNPAY:ReturnUrl"]; 
+            string vnp_Url = _config["VNPAY:Url"]; 
+            string vnp_TmnCode = _config["VNPAY:TmnCode"]; 
+            string vnp_HashSecret = _config["VNPAY:HashSecret"]; 
             //Build URL for VNPAY
             VnPayService vnpay = new VnPayService();
             vnpay.AddRequestData("vnp_Version", VnPayService.VERSION);
@@ -186,24 +190,24 @@ namespace OnlineShopping.Libraries.Services
             vnpay.AddRequestData("vnp_TmnCode", vnp_TmnCode);
             if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty())
             {
-                vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000 / 2).ToString()); // thanh toán trước 50% nếu là đơn customize
+                vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000 / 2).ToString()); 
             }
             else
             {
-                vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000).ToString()); //Số tiền thanh toán. Số tiền không mang các ký tự phân tách thập phân, phần nghìn, ký tự tiền tệ. Để gửi số tiền thanh toán là 100,000 VND (một trăm nghìn VNĐ) thì merchant cần nhân thêm 100 lần (khử phần thập phân), sau đó gửi sang VNPAY là: 10000000
+                vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000).ToString());
             }
             var payment = _dbContext.Payments.Find(typePayment);
             vnpay.AddRequestData("vnp_BankCode", payment.PaymentMethod);
             vnpay.AddRequestData("vnp_CreateDate", order.OrderDate.ToString("yyyyMMddHHmmss"));
             vnpay.AddRequestData("vnp_CurrCode", "VND");
-            string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString();
-            if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
+            
+            string ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
             vnpay.AddRequestData("vnp_IpAddr", ipAddress);
             vnpay.AddRequestData("vnp_Locale", "en");
             vnpay.AddRequestData("vnp_OrderInfo", "Payment orders:" + order.OrderId);
-            vnpay.AddRequestData("vnp_OrderType", "other"); //default value: other
+            vnpay.AddRequestData("vnp_OrderType", "other"); 
             vnpay.AddRequestData("vnp_ReturnUrl", vnp_Returnurl);
-            vnpay.AddRequestData("vnp_TxnRef", order.OrderId.ToString()); // Mã tham chiếu của giao dịch tại hệ thống của merchant. Mã này là duy nhất dùng để phân biệt các đơn hàng gửi sang VNPAY. Không được trùng lặp trong ngày
+            vnpay.AddRequestData("vnp_TxnRef", order.OrderId.ToString()); 
             string paymentUrl = vnpay.CreateRequestUrl(vnp_Url, vnp_HashSecret);
             return paymentUrl;
         }
@@ -294,7 +298,12 @@ namespace OnlineShopping.Libraries.Services
             return null;
         }
 
-       
+        public bool CheckUserAddress(User user)
+        {
+            if (user.UserAddresses.IsNullOrEmpty()) return false;
+            return true;
+        }
+
         public async Task<bool> CreateLogAsync(string assistantId, string activity)
         {
             var assistantExist = _dbContext.Users.FindAsync(assistantId);
@@ -317,7 +326,7 @@ namespace OnlineShopping.Libraries.Services
             }
         }
 
-
+       
 
         public string FilterBadWords(string input)
         {
@@ -329,8 +338,6 @@ namespace OnlineShopping.Libraries.Services
              string content = regex.Replace(input, "***");
 
             //filter english
-
-
             var client = new RestClient("https://api.apilayer.com/bad_words?censor_character=***");
             var request = new RestRequest()
                 .AddHeader("apikey", "ahpebO5MhcrobluOLxx0IbUwdpbd9viZ")

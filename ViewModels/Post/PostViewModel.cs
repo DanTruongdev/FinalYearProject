@@ -14,8 +14,6 @@ namespace OnlineShopping.ViewModels.Post
         [Required]
         public string Type { get; set; } //Tip or New
         public IFormFile? Image { get; set; }
-        [Required]
-        public DateTime CreationDate { get; set; }
-        public DateTime? LatestUpdate { get; set; }       
+          
     }
 }

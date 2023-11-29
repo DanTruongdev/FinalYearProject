@@ -1,10 +1,8 @@
-﻿using Bogus.DataSets;
-using Castle.Core.Internal;
+﻿using Castle.Core.Internal;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Newtonsoft.Json;
 using OnlineShopping.Data;
 using OnlineShopping.Hubs;
@@ -16,11 +14,9 @@ using OnlineShopping.Models.Gallery;
 using OnlineShopping.Models.Warehouse;
 using OnlineShopping.ViewModels;
 using OnlineShopping.ViewModels.Furniture;
-using OnlineShopping.ViewModels.User;
 using OnlineShopping.ViewModels.Warehouse;
-using Org.BouncyCastle.Ocsp;
 using System.ComponentModel.DataAnnotations;
-
+using System.Net.Mail;
 
 namespace OnlineShopping.Controllers
 {
@@ -124,6 +120,23 @@ namespace OnlineShopping.Controllers
         }
 
         //CRUD supplier
+        [HttpGet("shop-data/suppliers/search")]
+        public async Task<IActionResult> SearchRepositories(string searchString)
+        {
+            var supliers = await _dbContext.Supliers.Where(r => r.SupplierName.Contains(searchString)).ToListAsync();
+            if (supliers.IsNullOrEmpty()) return Ok(new List<Supplier>());
+            var response = supliers.Select(s => new
+            {
+                SuppllierId = s.SupplierId,
+                SupplierName = s.SupplierName,
+                SupplierAddress = s.Address.ToString(),
+                SupplierImage = _firebaseService.GetDownloadUrl(s.SupplierImage),
+                SupplierEmail = s.SupplierEmail,
+                SupplierPhoneNum = s.SupplierPhoneNums
+            }) ;
+            return Ok(response);
+        }
+
         [HttpGet("shop-data/suppliers")]
         public async Task<IActionResult> GetSupplier()
         {
@@ -178,7 +191,7 @@ namespace OnlineShopping.Controllers
             {
                 SupplierName = userInput.SupplierName,
                 SupplierAddressId = newAddress.AddressId,
-                SupplierImage = _firebaseService.ImageOrVideo(userInput.SuplierImage),
+                SupplierImage = _firebaseService.UploadFile(userInput.SuplierImage),
                 SupplierEmail = userInput.SuplierEmail,
                 SupplierPhoneNums = userInput.SuplierPhoneNums
             };
@@ -260,18 +273,23 @@ namespace OnlineShopping.Controllers
 
 
 
-        //doashdboard
+       
 
 
 
         //view import history
-         
+
 
         //export csv
 
 
 
         //furniture/furniture specification, category, collection
+        [HttpGet("shop-data/furnitures/search")]
+        public async Task<IActionResult> SearchFurnitures(string searchString)
+        {
+            return RedirectToAction("SearchFurniture", "Customer", new { keyword = searchString });
+        }
 
         [HttpGet("shop-data/furniures")]
         public async Task<IActionResult> GetAllFurnitures()
@@ -348,8 +366,9 @@ namespace OnlineShopping.Controllers
                 Description = userInput.Description
             };
             await _dbContext.AddAsync(newFurnitureSpecification);
+            await _dbContext.SaveChangesAsync();
 
-            if (userInput.UploadFiles.IsNullOrEmpty())
+            if (userInput.UploadFiles.Count > 0)
             {
                 foreach (var file in userInput.UploadFiles)
                 {
@@ -381,7 +400,11 @@ namespace OnlineShopping.Controllers
                     ColorId = newFurnitureSpecification.ColorId,
                     WoodId = newFurnitureSpecification.WoodId,
                     Price = newFurnitureSpecification.Price,
-                    Description = newFurnitureSpecification.Description
+                    Description = newFurnitureSpecification.Description,
+                    Images = newFurnitureSpecification.Attachments.IsNullOrEmpty() ? new string[] { } : 
+                        newFurnitureSpecification.Attachments.Where(a => a.Type.Equals("images")).Select(a => _firebaseService.GetDownloadUrl(a.Path)),
+                    Videos = newFurnitureSpecification.Attachments.IsNullOrEmpty() ? new string[] {} :
+                        newFurnitureSpecification.Attachments.Where(a => a.Type.Equals("videos")).Select(a => _firebaseService.GetDownloadUrl(a.Path))
                 });
             }
             catch
@@ -390,6 +413,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when create new furniture specification"));
             }
         }
+
 
         [HttpPut("shop-data/furnitures/edit")]
         public async Task<IActionResult> UpdateFurniturue([FromForm] EditFurnitureViewModel userInput)
@@ -544,8 +568,8 @@ namespace OnlineShopping.Controllers
             }
         }
 
+        
         //collection
-
         [HttpGet("shop-data/collections")]
         public async Task<IActionResult> GetCollection()
         {
@@ -756,47 +780,8 @@ namespace OnlineShopping.Controllers
             return RedirectToAction("GetAllOrder", "Assistant");
         }
 
-
-
-
-        //Create account for assistant and yourself 
-
-
-
-        //[HttpGet("accounts")]
-        //public async Task<IActionResult> GetAllAccounts(string? role)
-        //{
-        //    string userRole = role.IsNullOrEmpty() ? "ALL" : role.ToUpper();
-        //    if (!userRole.Equals("ALL"))
-        //    {
-        //        var checkRole = _roleManager.Roles.FirstOrDefault(r => r.Name.Equals(userRole));
-        //        if (checkRole == null) return BadRequest("The role was not found");
-        //    }
-        //    var users = userRole.Equals("ALL") ? await _dbContext.Users.ToListAsync() : await _userManager.GetUsersInRoleAsync(userRole);
-        //    var response = users.Select(u => new
-        //    {
-        //        Id = u.Id,
-        //        FirstName = u.FirstName,
-        //        LastName = u.LastName,
-        //        DoB = u.DoB,
-        //        Gender = u.Gender,
-        //        Avatar = _firebaseService.GetDownloadUrl(u.Avatar),
-        //        Role = _userManager.GetRolesAsync(u),
-        //        Spent = u.Spent,
-        //        Debit = u.Debit,
-        //        CreationDate = u.CreationDate,
-        //        LatestUpdate = u.LatestUpdate,
-        //        IsActivated = u.IsActivated,
-        //    });
-        //    return Ok(response);
-        //}
-
         
         //add account in authentication controller!!!!
-
-       
-
-
 
 
             [HttpPut("accounts/disable")]
@@ -816,12 +801,6 @@ namespace OnlineShopping.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", "An error occurs when updating user status"));
             }           
         }
-
-
-
-         //Top selling 
-
-
 
         }
 }

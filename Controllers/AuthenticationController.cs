@@ -1,20 +1,20 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using OnlineShopping.Data;
+using OnlineShopping.Hubs;
+using OnlineShopping.Hubs.Models;
+using OnlineShopping.Libraries.Models;
 using OnlineShopping.Libraries.Services;
 using OnlineShopping.Models;
-using OnlineShopping.ViewModels.User;
 using OnlineShopping.ViewModels;
-using OnlineShopping.Libraries.Models;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
-using System.IdentityModel.Tokens.Jwt;
 using OnlineShopping.ViewModels.Login;
+using OnlineShopping.ViewModels.User;
 using System.ComponentModel.DataAnnotations;
-using OnlineShopping.Hubs;
-using Microsoft.AspNetCore.SignalR;
-using OnlineShopping.Hubs.Models;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace OnlineShopping.Controllers
 {
@@ -33,7 +33,7 @@ namespace OnlineShopping.Controllers
         private readonly IProjectHelper _projectHelper;
         private readonly IHubContext<SignalHub> _hubContext;
 
-        public AuthenticationController(ApplicationDbContext dbContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager, SignInManager<User> signInManager, 
+        public AuthenticationController(ApplicationDbContext dbContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager, SignInManager<User> signInManager,
             IConfiguration config, IEmailService emailService, ISMSService smsService, IFirebaseService firebaseService, IProjectHelper projectHelper, IHubContext<SignalHub> hubContext)
         {
             _dbContext = dbContext;
@@ -52,14 +52,14 @@ namespace OnlineShopping.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> SignalRTets()
         {
-            var data = new JwtToken("testing123", DateTime.Now);          
+            var data = new JwtToken("testing123", DateTime.Now);
             _hubContext.Clients.All.SendAsync("ReceiveJWTToken", data);
             return Ok("Done");
         }
 
 
 
-        [HttpPost("create-account/{roleId}")]    //1: customer, 2: assistant, 3: shop-owner
+        [HttpPost("create-account/{roleId}")]    
         public async Task<IActionResult> RegisterCustomerAccount([FromBody] RegisterCustomerAccount userInfor, [FromRoute] string roleId)
         {
             var roleExist = await _roleManager.FindByIdAsync(roleId);
@@ -112,9 +112,9 @@ namespace OnlineShopping.Controllers
             if (!addUserResult.Succeeded)
             {
                 return StatusCode(StatusCodes.Status409Conflict,
-                    new Response("Error", addUserResult.ToString() ));
+                    new Response("Error", addUserResult.ToString()));
             }
-            var addUserRoleResult =  await _userManager.AddToRoleAsync(newUser, roleExist.Name);
+            var addUserRoleResult = await _userManager.AddToRoleAsync(newUser, roleExist.Name);
             if (!addUserRoleResult.Succeeded)
             {
                 return StatusCode(StatusCodes.Status409Conflict,
@@ -122,7 +122,7 @@ namespace OnlineShopping.Controllers
             }
 
             //if role is not customer
-            if (!roleExist.Id.Equals("1")){
+            if (!roleExist.Id.Equals("1")) {
                 var response = new
                 {
                     FirstName = newUser.FirstName,
@@ -140,7 +140,7 @@ namespace OnlineShopping.Controllers
                 return Created("", response);
             }
 
-            await _projectHelper.CreateUserInfor(newUser.Email);           
+            await _projectHelper.CreateUserInfor(newUser.Email);
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
             var confirmationLink = Url.Action("ConfirmEmail",
                 "Authentication", new { token, email = newUser.Email }, Request.Scheme);
@@ -148,15 +148,15 @@ namespace OnlineShopping.Controllers
                 "Confirmation email link", $"Please click to the following Url to verify your email: \n {confirmationLink!}");
             _emailService.SendEmail(message);
             return StatusCode(StatusCodes.Status201Created,
-                    new Response ("Success", $"Account created & a confirmation email sent to {newUser.Email} successFully"));
+                    new Response("Success", $"Account created & a confirmation email sent to {newUser.Email} successFully"));
         }
 
         [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail(string token, string email)
-        {   
+        {
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null) return Unauthorized(new Response("Error", "No account matches email"));
-            
+
             var result = _userManager.ConfirmEmailAsync(user, token);
             if (!result.Result.Succeeded) return Unauthorized(new Response("Error", "No account matches email"));
 
@@ -165,7 +165,6 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpGet("signin-google")]
-     
         public IActionResult SignInGoogle()
         {
             var redirectUri = Url.Action(nameof(HandleGoogleCallback), "Authentication");
@@ -173,7 +172,7 @@ namespace OnlineShopping.Controllers
             return new ChallengeResult("Google", properties);
         }
 
-        [HttpGet("google-callback")]  
+        [HttpGet("google-callback")]
         public async Task<IActionResult> HandleGoogleCallback()
         {
             ExternalLoginInfo externalUserInfor = null;
@@ -212,12 +211,14 @@ namespace OnlineShopping.Controllers
 
                         await _signInManager.SignInAsync(userWithExternalMail, isPersistent: false);
                         var jwtToken = _projectHelper.GenerateJWTToken(userWithExternalMail, await _userManager.GetRolesAsync(userWithExternalMail));
-                        //return the token
-                        return Ok(new
+                        var response = new
                         {
                             token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
                             expiration = jwtToken.ValidTo
-                        });
+                        };
+                        _hubContext.Clients.All.SendAsync("ReceivedJWTToken", new JwtToken(new JwtSecurityTokenHandler().WriteToken(jwtToken), jwtToken.ValidTo));
+                        //return the token
+                        return Ok(response);
                     }
                     else
                     {
@@ -247,7 +248,7 @@ namespace OnlineShopping.Controllers
                     await _signInManager.SignInAsync(newUser, isPersistent: false, externalUserInfor.LoginProvider);
                     await _projectHelper.CreateUserInfor(newUser.Email);
                     var jwtToken = _projectHelper.GenerateJWTToken(newUser, await _userManager.GetRolesAsync(newUser));
-                   
+
                     _hubContext.Clients.All.SendAsync("ReceivedJWTToken", new JwtToken(new JwtSecurityTokenHandler().WriteToken(jwtToken), jwtToken.ValidTo));
                     //return Ok("done");
                     return Ok(new
@@ -266,16 +267,15 @@ namespace OnlineShopping.Controllers
             return Ok();
         }
 
-        [HttpPost("login")]     
+        [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginUser loginModel)
         {
             var loggedInUser = await _userManager.FindByEmailAsync(loginModel.Email);
             var passwordChecker = await _userManager.CheckPasswordAsync(loggedInUser, loginModel.Password);
-
             //checking if the user existed and password was valid
-            if (loggedInUser == null || !passwordChecker) return Unauthorized(new Response("Error", "Invalid email or password"));                        
+            if (loggedInUser == null || !passwordChecker) return Unauthorized(new Response("Error", "Invalid email or password"));
             if (!loggedInUser.IsActivated) return StatusCode(StatusCodes.Status405MethodNotAllowed, new Response("Error", "Inactive accounts are not allowed to log in"));
-            
+
             await _signInManager.SignOutAsync();
             await _signInManager.PasswordSignInAsync(loggedInUser, loginModel.Password, loginModel.RememberMe.Value, true);
             if (loggedInUser.TwoFactorEnabled)
@@ -284,9 +284,9 @@ namespace OnlineShopping.Controllers
                 var message = new Message(new string[] { loggedInUser.Email! }, "OTP Confirmation", token);
                 _emailService.SendEmail(message);
                 return StatusCode(StatusCodes.Status200OK,
-                 new Response ("Success", $"The system has sent an OTP to your email {loggedInUser.Email}" ));
+                 new Response("Success", $"The system has sent an OTP to your email {loggedInUser.Email}"));
             }
-            var jwtToken = _projectHelper.GenerateJWTToken(loggedInUser, await _userManager.GetRolesAsync(loggedInUser));        
+            var jwtToken = _projectHelper.GenerateJWTToken(loggedInUser, await _userManager.GetRolesAsync(loggedInUser));
             return Ok(new
             {
                 token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
@@ -314,7 +314,7 @@ namespace OnlineShopping.Controllers
             return Unauthorized();
         }
 
-        [HttpPost("forgot-password")]    
+        [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([Required] string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
@@ -322,8 +322,9 @@ namespace OnlineShopping.Controllers
             {
                 //generate a reset password token
                 var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-                var forgotPasswordLink = Url.Action(nameof(ResetPassword), "Authentication", new { token, email = user.Email }, Request.Scheme);
-                var message = new Message(new string[] { user.Email }, "Reset password link", forgotPasswordLink);
+                //var forgotPasswordLink = Url.Action(nameof(ResetPassword), "Authentication", new { token, email = user.Email }, Request.Scheme);
+                var forgotPasswordLink = $"http://localhost:8080/newpassword?email={email}&token={token}";
+                var message = new Message(new string[] { user.Email }, "Reset password link:", $"Please click this url to reset your password:" + forgotPasswordLink);
                 _emailService.SendEmail(message);
                 return StatusCode(StatusCodes.Status200OK,
                    new Response("Success", $"Reset password link has sent to  {user.Email} successfully"));
@@ -332,37 +333,21 @@ namespace OnlineShopping.Controllers
                    new Response("Error", "This email is not linked to any account"));
         }
 
-        [HttpGet("reset-password")]
-        public async Task<IActionResult> ResetPassword(string token, string email)
-        {
-            var model = new ResetPassword { Email = email, Token = token };
-            return Ok(new { model });
-        }
 
         [HttpPost("reset-password")]
         [AllowAnonymous]
 
         public async Task<IActionResult> SetNewPassword(ResetPassword resetPassword)
         {
-
             var user = await _userManager.FindByEmailAsync(resetPassword.Email);
-            if (user != null)
+            if (user == null) return BadRequest(new Response("Error", "This email is not linked to any account"));
+            var resetPassResult = await _userManager.ResetPasswordAsync(user, resetPassword.Token, resetPassword.Password);
+            if (resetPassResult.Succeeded)
             {
-                //reset password
-                var resetPassResult = await _userManager.ResetPasswordAsync(user, resetPassword.Token, resetPassword.Password);
-                if (!resetPassResult.Succeeded)
-                {
-                    foreach (var error in resetPassResult.Errors)
-                    {
-                        ModelState.AddModelError(error.Code, error.Description);
-                    }
-                    return Ok(ModelState);
-                }
                 return StatusCode(StatusCodes.Status200OK,
-                   new Response("Success", "Password has changed successfully!" ));
+                       new Response("Success", resetPassword.Password));
             }
-            return StatusCode(StatusCodes.Status400BadRequest,
-                   new Response("Error", "Incorrect email. Please try again!"));
+            else return BadRequest(new Response("Error", "Invalid token"));        
         }
-    }
+    } 
 }

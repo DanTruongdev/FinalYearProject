@@ -1,7 +1,4 @@
 ﻿using Castle.Core.Internal;
-using Castle.Core.Resource;
-using Google.Apis.Util;
-using MailKit.Search;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -15,11 +12,8 @@ using OnlineShopping.Models.Funiture;
 using OnlineShopping.Models.Purchase;
 using OnlineShopping.Models.Warehouse;
 using OnlineShopping.ViewModels;
-using OnlineShopping.ViewModels.Login;
 using OnlineShopping.ViewModels.Post;
-using OnlineShopping.ViewModels.User;
 using OnlineShopping.ViewModels.Warehouse;
-using Org.BouncyCastle.Ocsp;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text;
@@ -61,8 +55,8 @@ namespace OnlineShopping.Controllers
             if (woods.IsNullOrEmpty()) return NotFound("There is not any furniture category");
             var response = woods.Select(w => new
             {
-                CategoryId = w.WoodId,
-                CategoryName = w.WoodType
+                WoodId = w.WoodId,
+                WoodType = w.WoodType
             }).ToList();
             return Ok(response);
         }
@@ -371,9 +365,34 @@ namespace OnlineShopping.Controllers
             return Ok(response);
         }
 
-        
+
 
         //Material
+        [HttpGet("shop-data/materials/search")]
+        public async Task<IActionResult> SearchMaterial(string? searchString)
+        {
+            
+            searchString = searchString.IsNullOrEmpty() ? String.Empty : searchString.Trim().ToUpper();
+            var result = await _dbContext.Materials.Where(f => f.MaterialName.ToUpper().Contains(searchString)).ToListAsync();
+            if (result.IsNullOrEmpty()) return Ok(new List<Material>());
+            var response = result.Select(m => new
+            {
+                MaterialId = m.MaterialId,
+                MaterialName = m.MaterialName,
+                MaterialPrice = m.MaterialPrice,
+                MaterialImage = _firebaseService.GetDownloadUrl(m.MaterialImage),
+                Description = m.Description,
+                DefaultSuplierId = m.DefaultSuplierId,
+                Available = m.MaterialRepositories.Select(mr => new
+                {
+                    RepositoryId = mr.Repository.RepositoryId,
+                    RepositoryName = mr.Repository.RepositoryName,
+                    Address = mr.Repository.Address.ToString(),
+                    Available = mr.Available
+                })
+            });
+            return Ok(response);
+        }
         [HttpGet("shop-data/materials")]
         public async Task<IActionResult> GetMaterial() 
         {
@@ -459,8 +478,8 @@ namespace OnlineShopping.Controllers
 
             if (!userInput.MaterialName.IsNullOrEmpty())
             {
-                Material materialNameExist = await _dbContext.Materials.FirstOrDefaultAsync(m => m.MaterialName.ToUpper().Equals(userInput.MaterialName.ToUpper()));
-                if (materialNameExist != null) return BadRequest(new Response("Error", "The material already exists"));
+                Material materialNameExistName = await _dbContext.Materials.FirstOrDefaultAsync(m => m.MaterialName.ToUpper().Equals(userInput.MaterialName.Trim().ToUpper()));
+                if (materialNameExistName != null && materialNameExistName.MaterialName.Equals(materialExist.MaterialName)) return BadRequest(new Response("Error", "The material already exists"));
             }
            
          
@@ -488,7 +507,7 @@ namespace OnlineShopping.Controllers
             }
         }
 
-        [HttpPut("shop-data/materials/delete/{materialId}")]
+        [HttpDelete("shop-data/materials/delete/{materialId}")]
         public async Task<IActionResult> RemoveMaterial([FromRoute] int materialId)
         {
             Material materialExist = await _dbContext.Materials.FindAsync(materialId);
@@ -545,7 +564,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpPost("warehouse/material/imports/create")]
-        public async Task<IActionResult> CreateImports(ImportMaterialViewModel userInput)
+        public async Task<IActionResult> CreateImports([FromBody] ImportMaterialViewModel userInput)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Logged in user not found ");
@@ -738,6 +757,23 @@ namespace OnlineShopping.Controllers
         }
 
         //Repository 
+        [HttpGet("warehouse/repositories/search")]
+        public async Task<IActionResult> SearchRepositories(string searchString)
+        {
+            var repositories = await _dbContext.Repositories.Where(r => r.RepositoryName.Contains(searchString)).ToListAsync();
+            if (repositories.IsNullOrEmpty()) return Ok(new List<Repository>());
+            var response = repositories.Select(r => new
+            {
+                RepositoryId = r.RepositoryId,
+                RepositoryName = r.RepositoryName,
+                Address = r.Address.ToString(),
+                Capacity = r.Capacity,
+                IsFull = r.IsFull,
+                CreationDate = r.CreationDate
+            });
+            return Ok(response);
+
+        }
         [HttpGet("warehouse/repositories")]
         public async Task<IActionResult> GetRepositories()
         {
@@ -1147,6 +1183,7 @@ namespace OnlineShopping.Controllers
             Repository toRepoExist = await _dbContext.Repositories.FindAsync(toRepoId);
             if (toRepoExist == null) return NotFound(new Response("Error", $"The repository with id = {toRepoId} was not found"));
             if (toRepoExist.IsFull) return BadRequest(new Response("Error", $"The repository with id = {toRepoId} cannot receive materials which transferred from the repository with id = {fromRepoId} when it is in full status"));
+            
             if (tranferItemList.Distinct().Count() != tranferItemList.Count()) return BadRequest(new Response("Error", "Contain duplicate item in the list of transfer items"));
             List<MaterialRepository> fromMaterialRepositories = new List<MaterialRepository>();
             foreach (var item in tranferItemList)
@@ -1383,7 +1420,7 @@ namespace OnlineShopping.Controllers
         [HttpGet("warehouse/repositories/furniture-repository-history/to-csv")]
         public async Task<IActionResult> GetFurnitureRepositoryHistoryCSV()
         {
-            var data = _dbContext.FurnitureRepositoryHistories;
+            var data = await _dbContext.FurnitureRepositoryHistories.ToListAsync();
             var csv = new StringBuilder();
             string heading = "RepositoryId,Repository Name,Type,Creator,Furniture Specification Name,Quantity,Description,CreationDate";
             csv.AppendLine(heading);
@@ -1397,7 +1434,7 @@ namespace OnlineShopping.Controllers
                              row.FurnitureSpecification.FurnitureSpecificationName,
                              row.Quantity,
                              row.Description,                          
-                             row.CreationDate
+                             row.CreationDate.ToString()
                            );
                     csv.AppendLine(newRow);               
            }
@@ -1405,10 +1442,10 @@ namespace OnlineShopping.Controllers
             return File(bytes, "text/csv", "Furniture_repository_history.csv");
         }
 
-        [HttpGet("warehouse/repositories/material-repository-history/to-csv")]
+        [HttpGet("warehouse/repositories/material-repository-history/to-csv" )]
         public async Task<IActionResult> GetMaterialRepositoryHistoryCSV()
         {
-            var data = _dbContext.MaterialRepositoryHistories;
+            var data = await _dbContext.MaterialRepositoryHistories.ToListAsync();
             var csv = new StringBuilder();
             string heading = "RepositoryId,Repository Name,Type,Creator,Material Name,Quantity,Description,CreationDate";
             csv.AppendLine(heading);
@@ -1422,7 +1459,7 @@ namespace OnlineShopping.Controllers
                          row.Material.MaterialName,
                          row.Quantity,
                          row.Description,
-                         row.CreationDate
+                         row.CreationDate.ToString()
                        );
                 csv.AppendLine(newRow);
             }
@@ -1515,11 +1552,11 @@ namespace OnlineShopping.Controllers
 
         //CRUD post
         [HttpGet("shop-data/posts")]
-        public async Task<IActionResult> GetPost(string? type)
+        public async Task<IActionResult> GetPost([FromQuery]string? type)
         {
             if (type.IsNullOrEmpty()) type = "ALL";
             else if (!type.Equals("TIP") || !type.Equals("NEW")) return BadRequest(new Response("Error", "Invalid post type. it must be \"TIP\" or \"NEW\""));
-            var posts =  type.Equals("ALL")? _dbContext.Posts : _dbContext.Posts.Where(p => p.Type.Equals(type));
+            var posts =  type.Equals("ALL")? await _dbContext.Posts.ToListAsync() : await _dbContext.Posts.Where(p => p.Type.Equals(type)).ToListAsync();
             if (posts.IsNullOrEmpty()) return Ok(new List<Post>());
             var response = posts.Select(p => new
             {
@@ -1541,7 +1578,7 @@ namespace OnlineShopping.Controllers
             if (email == null) return Unauthorized(new Response("Error", "Logged in user not found "));
             var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
 
-            if (!userInput.Type.Equals("TIP") || !userInput.Type.Equals("NEW")) return BadRequest(new Response("Error", "Invalid post type. It must be \"TIP\" or \"NEW\""));
+            if (!userInput.Type.Equals("TIP") && !userInput.Type.Equals("NEW")) return BadRequest(new Response("Error", "Invalid post type. It must be \"TIP\" or \"NEW\""));
 
             Post newPost = new Post()
             {
@@ -1551,6 +1588,7 @@ namespace OnlineShopping.Controllers
                 Type = userInput.Type,
                 Image = _firebaseService.UploadFile(userInput.Image),
                 CreationDate = DateTime.Now,
+                LatestUpdate = DateTime.Now
             };
             try
             {
@@ -1563,7 +1601,7 @@ namespace OnlineShopping.Controllers
                     Title = newPost.Title,
                     Content = newPost.Title,
                     Type = newPost.Type,
-                    Image = newPost,
+                    Image = _firebaseService.GetDownloadUrl(newPost.Image),
                     CreationDate = newPost.CreationDate,
                     LatestUpdate = newPost.CreationDate
                 };
@@ -1576,7 +1614,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpPut("shop-data/posts/{postId}/edit")]
-        public async Task<IActionResult> AddPost([FromRoute] int postId, [FromForm] PostViewModel userInput)
+        public async Task<IActionResult> EditPost([FromRoute] int postId, [FromForm] PostViewModel userInput)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return Unauthorized(new Response("Error", "Logged in user not found "));
@@ -1603,7 +1641,7 @@ namespace OnlineShopping.Controllers
                     Title = postExist.Title,
                     Content = postExist.Title,
                     Type = postExist.Type,
-                    Image = postExist,
+                    Image = _firebaseService.GetDownloadUrl(postExist.Image),
                     CreationDate = postExist.CreationDate,
                     LatestUpdate = postExist.LatestUpdate
                 };
@@ -1616,7 +1654,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpDelete("shop-data/posts/{postId}/remove")]
-        public async Task<IActionResult> RemvePost([FromRoute] int postId)
+        public async Task<IActionResult> RemovePost([FromRoute] int postId)
         {
             Post postExist = await _dbContext.Posts.FindAsync(postId);
             if (postExist == null) return NotFound(new Response("Error", $"The post with id = {postId} was not found"));

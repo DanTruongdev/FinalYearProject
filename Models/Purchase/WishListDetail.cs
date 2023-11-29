@@ -1,4 +1,5 @@
-﻿using OnlineShopping.Models.Funiture;
+﻿
+using OnlineShopping.Models.Funiture;
 
 namespace OnlineShopping.Models.Purchase
 {

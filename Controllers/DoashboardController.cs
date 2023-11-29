@@ -120,7 +120,8 @@ namespace OnlineShopping.Controllers
             
             
 
-            var orders = _dbContext.Orders.Where(o => o.OrderDate.Month == currentMonth && o.OrderDate.Month == currentYear);
+            var orders = _dbContext.Orders.Where(o => o.OrderDate.Month == currentMonth && o.OrderDate.Year == currentYear);
+           
             var orderStatus = new
             {
                 Processing = orders.Where(o => o.Status.Equals("Processing")).Count(),

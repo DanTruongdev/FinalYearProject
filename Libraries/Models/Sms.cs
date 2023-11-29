@@ -1,6 +1,4 @@
-﻿
-
-namespace OnlineShopping.Libraries.Models
+﻿namespace OnlineShopping.Libraries.Models
 {
     public class Sms
     {

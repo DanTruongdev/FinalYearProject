@@ -83,7 +83,7 @@ namespace OnlineShopping.Controllers
 
         [HttpGet("furnitures/{id}")]
         [AllowAnonymous] 
-        public async Task<IActionResult> GetFurnitureSpecificationById(int id) //thieu available
+        public async Task<IActionResult> GetFurnitureSpecificationById(int id)
         {
             var furnitureSpecifications = await _dbContext.FurnitureSpecifications.Where(fs => fs.FurnitureId == id).ToListAsync();
             if (furnitureSpecifications.Count == 0)
@@ -96,7 +96,7 @@ namespace OnlineShopping.Controllers
 
                 var response = new
                 {
-                   
+
                     FurnitureId = fs.FurnitureId,
                     FurnitureName = fs.Furniture.FurnitureName,
                     FurnitureSpecificationId = fs.FurnitureSpecificationId,
@@ -108,12 +108,13 @@ namespace OnlineShopping.Controllers
                     Wood = fs.Wood.WoodType,
                     Price = fs.Price,
                     Description = fs.Description,
-                    Images = fs.Attachments.Where(a => a.Type.Equals("Images")).Select(a => new
+                    Available = fs.FurnitureRepositories.IsNullOrEmpty() ? 0 : fs.FurnitureRepositories.FirstOrDefault(f => f.FurnitureSpecificationId.Equals(fs.FurnitureSpecificationId)).Available,
+                    Images = fs.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
                     {
                         AttachmentName = a.AttachmentName,
                         Path = _firebaseService.GetDownloadUrl(a.Path)
                     }),
-                    Videos = fs.Attachments.Where(a => a.Type.Equals("Videos")).Select(a => new
+                    Videos = fs.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
                     {
                         AttachmentName = a.AttachmentName,
                         Path = _firebaseService.GetDownloadUrl(a.Path)
@@ -131,29 +132,30 @@ namespace OnlineShopping.Controllers
             return Ok(responses);           
         }
 
-        [HttpGet("furnitures/search")] // lack of available
+        [HttpGet("furnitures/search")] 
         [AllowAnonymous] 
-        public async Task<IActionResult> SearchFurniture(string keyword)
+        public async Task<IActionResult> SearchFurnitureF(string keyword)
         {
-            if (!keyword.IsNullOrEmpty()) keyword = keyword.ToUpper();
+            if (!keyword.IsNullOrEmpty()) keyword = keyword.ToUpper().Trim();
             var result = await _dbContext.Furnitures.Where(f => f.FurnitureName.ToUpper().Contains(keyword)).ToListAsync();
-            if (result.Count == 0)
-            {
-                return NotFound();
-            }
+            if (result.IsNullOrEmpty()) return Ok(new List<Furniture>());
             var response = result.Select(f => new
             {
                 FurnitureId = f.FurnitureId,
                 FurnitureName = f.FurnitureName,
                 VoteStar = f.VoteStar,
                 Sold = f.Sold,
-                Label = f.Label.LabelName,
-                Available = f.FurnitureSpecifications.IsNullOrEmpty() ? 0 : f.FurnitureSpecifications.Sum(fs => fs.FurnitureRepositories.Sum(fr => fr.Available)),
-                Price = f.FurnitureSpecifications.Max(fs => fs.Price) == f.FurnitureSpecifications.Min(fs => fs.Price)
-                          ? $"{f.FurnitureSpecifications.Max(fs => fs.Price)}" : $"{f.FurnitureSpecifications.Min(fs => fs.Price)} - {f.FurnitureSpecifications.Max(fs => fs.Price)}",
-                Image = f.FurnitureSpecifications.FirstOrDefault().Attachments.IsNullOrEmpty() ? String.Empty :
+                Label = f.Label == null ? string.Empty : f.Label.LabelName,
+                CategoryId = f.CategoryId,
+                Category = f.Category.CategoryName,
+                Available = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Sum(fs => fs.FurnitureRepositories.Sum(fr => fr.Available)) : 0,
+                AppropriateRoom = f.AppopriateRoom,
+                Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
+                Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
                         _firebaseService.GetDownloadUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
-                        
+                        : String.Empty,
+                CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
+                Collection = f.Collection.CollectionName
             });
             return Ok(response);
         }
@@ -164,20 +166,29 @@ namespace OnlineShopping.Controllers
         {
             filter.MaxCost = filter.MaxCost == 0 ? double.MaxValue : filter.MaxCost;
             var funituresSpecifications = await _dbContext.FurnitureSpecifications.Where(fs => fs.Price >= filter.MinCost && fs.Price <= filter.MaxCost).ToListAsync();
-            if (filter.Category != null) funituresSpecifications = funituresSpecifications.Where(fs => fs.Furniture.Category.Equals(filter.Category)).ToList();
-            if (filter.Star != 0) funituresSpecifications = funituresSpecifications.Where(fs => fs.Furniture.VoteStar > filter.Star && fs.Furniture.VoteStar < filter.Star + 1).ToList();
-            if (filter.AppropriateRoom != null) funituresSpecifications = funituresSpecifications.Where(fs => fs.Furniture.AppopriateRoom.Equals(filter.AppropriateRoom)).ToList();
-            if (filter.Collection != null) funituresSpecifications = funituresSpecifications.Where(fs => fs.Furniture.Collection.Equals(filter.Collection)).ToList();
-            var response = funituresSpecifications.GroupBy(fs => fs.Furniture).Select(gr => new
+            if (!filter.Category.IsNullOrEmpty()) funituresSpecifications = funituresSpecifications.Where(fs => fs.Furniture.Category.Equals(filter.Category)).ToList();
+            if (filter.Star != 0 || filter.Star == null) funituresSpecifications = funituresSpecifications.Where(fs => fs.Furniture.VoteStar > filter.Star && fs.Furniture.VoteStar < filter.Star + 1).ToList();
+            if (!filter.AppropriateRoom.IsNullOrEmpty()) funituresSpecifications = funituresSpecifications.Where(fs => fs.Furniture.AppopriateRoom.Equals(filter.AppropriateRoom)).ToList();
+            if (!filter.Collection.IsNullOrEmpty()) funituresSpecifications = funituresSpecifications.Where(fs => fs.Furniture.Collection.Equals(filter.Collection)).ToList();
+            var furnitures = funituresSpecifications.GroupBy(fs => fs.Furniture).Select(gr => gr.Key).ToList();
+            var response = furnitures.Select(f => new
             {
-                FurnitureId = gr.Key.FurnitureId,
-                FurnitureName = gr.Key.FurnitureName,
-                VoteStar = gr.Key.VoteStar,
-                Sold = gr.Key.Sold,
-                Label = gr.Key.Label.LabelName,
-                Image = _firebaseService.GetDownloadUrl(gr.FirstOrDefault().Attachments.FirstOrDefault().Path),
-                Price = gr.Min(fs => fs.Price) == gr.Max(fs => fs.Price) ? $"{gr.Max(fs => fs.Price)}" : $"{gr.Min(fs => fs.Price)}- {gr.Max(fs => fs.Price)}",
-            }).ToList();
+                FurnitureId = f.FurnitureId,
+                FurnitureName = f.FurnitureName,
+                VoteStar = f.VoteStar,
+                Sold = f.Sold,
+                Label = f.Label == null ? string.Empty : f.Label.LabelName,
+                CategoryId = f.CategoryId,
+                Category = f.Category.CategoryName,
+                Available = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Sum(fs => fs.FurnitureRepositories.Sum(fr => fr.Available)) : 0,
+                AppropriateRoom = f.AppopriateRoom,
+                Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
+                Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
+                        _firebaseService.GetDownloadUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
+                        : String.Empty,
+                CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
+                Collection = f.Collection.CollectionName
+            });
             return Ok(response);
         }
                                                                 
@@ -188,12 +199,13 @@ namespace OnlineShopping.Controllers
         {
 
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             var cartDetail = await _dbContext.CartDetails.Include(cd => cd.FurnitureSpecifition).Include(cd => cd.FurnitureSpecifition.Furniture)
                 .Where(cd => cd.CartId == loggedInUser.Cart.CartId).ToListAsync();
             var usercCart = cartDetail.Select(cd => new
             {
+                CartDetailId = cd.CartDetailId,
                 FurnitureId = cd.FurnitureSpecifition.Furniture.FurnitureId,
                 FurnitureName = cd.FurnitureSpecifition.Furniture.FurnitureName,
                 FurnitureSpecificationId = cd.FurnitureSpecificationId,
@@ -314,19 +326,25 @@ namespace OnlineShopping.Controllers
 
             var wishList = loggedInUser.WishList.WishListDetails;
             if (wishList.IsNullOrEmpty()) return Ok(new List<WishListDetail>());
-            var response = wishList.Select(w => new
+            var furnitures = wishList.Select(w => w.Furniture);
+            var response = furnitures.Select(f => new
             {
-                FurnitureId = w.Furniture.FurnitureId,
-                FurnitureName = w.Furniture.FurnitureName,
-                VoteStar = w.Furniture.VoteStar,
-                Sold = w.Furniture.Sold,
-                Label = w.Furniture.Label.LabelName,
-                Available = w.Furniture.FurnitureSpecifications.IsNullOrEmpty() ? 0 : w.Furniture.FurnitureSpecifications.Sum(fs => fs.FurnitureRepositories.Sum(fr => fr.Available)),
-                Price = w.Furniture.FurnitureSpecifications.Max(fs => fs.Price) == w.Furniture.FurnitureSpecifications.Min(fs => fs.Price)
-                           ? $"{w.Furniture.FurnitureSpecifications.Max(fs => fs.Price)}" : $"{w.Furniture.FurnitureSpecifications.Min(fs => fs.Price)} - {w.Furniture.FurnitureSpecifications.Max(fs => fs.Price)}",
-                Image = w.Furniture.FurnitureSpecifications.FirstOrDefault().Attachments.IsNullOrEmpty() ? String.Empty :
-                        _firebaseService.GetDownloadUrl(w.Furniture.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path) 
-            }).ToList();
+                FurnitureId = f.FurnitureId,
+                FurnitureName = f.FurnitureName,
+                VoteStar = f.VoteStar,
+                Sold = f.Sold,
+                Label = f.Label == null ? string.Empty : f.Label.LabelName,
+                CategoryId = f.CategoryId,
+                Category = f.Category.CategoryName,
+                Available = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Sum(fs => fs.FurnitureRepositories.Sum(fr => fr.Available)) : 0,
+                AppropriateRoom = f.AppopriateRoom,
+                Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
+                Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
+                        _firebaseService.GetDownloadUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
+                        : String.Empty,
+                CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
+                Collection = f.Collection.CollectionName
+            });
             return Ok(response);
         }
 
@@ -632,26 +650,26 @@ namespace OnlineShopping.Controllers
         //NOW                                                                             //CHECKOUT
         [HttpGet("checkout-now")]
         [Authorize(Roles = "CUSTOMER")] 
-        public async Task<IActionResult> CheckoutNow(string furnitureSpecificationId, int Quantity)
+        public async Task<IActionResult> CheckoutNow([Required] string furnitureSpecificationId, [Required] int Quantity)
         {
-            if (furnitureSpecificationId.IsNullOrEmpty() || Quantity < 1) return BadRequest("FurniturSpecficationID or quantity is required");
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
-            var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-            //var checkCustomerInfor = CheckCustomerInfor(loggedInUser);
-            //if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
-            //    new Response() { Status = "Error", Message = checkCustomerInfor });
+            if (email == null) return NotFound("Logged in user not found ");
+            var loggedInUser = await _userManager.FindByEmailAsync(email);
+            string  checkCustomerInfor = _projectHelper.CheckInforVerify(loggedInUser);
+            if (!checkCustomerInfor.IsNullOrEmpty()) return StatusCode(StatusCodes.Status405MethodNotAllowed,
+                new Response("Error", checkCustomerInfor));
             var orderFurniture = await _dbContext.FurnitureSpecifications.FindAsync(furnitureSpecificationId);
-            if (orderFurniture == null) return NotFound("FurniturSpecficationID is not exist");
-            int available = orderFurniture.FurnitureRepositories.Sum(fr => fr.Available);
-            //if (available == 0) return StatusCode(StatusCodes.Status403Forbidden,
-            //    new Response() { Status = "Error", Message = "Out of this furniture" });
+            if (orderFurniture == null) return NotFound($"Furnitur specfication with id = {furnitureSpecificationId} is not exist");
+            int available = orderFurniture.FurnitureRepositories == null ? 0 : orderFurniture.FurnitureRepositories.Sum(fr => fr.Available);
+            if (available == 0) return StatusCode(StatusCodes.Status403Forbidden,
+                new Response("Error", "The furniture specification is out of stock"));
             var paymentMethods = await _dbContext.Payments.Select(p => new
             {
                 PaymentId = p.PaymentId,
                 PaymentMethod = p.PaymentMethod
             }).ToListAsync();
             var deliveryAddress = loggedInUser.UserAddresses.FirstOrDefault(ua => ua.AddressType.Equals("DEFAULT"));
+            if (deliveryAddress == null) return NotFound(new Response("Error", "User must add address before check out"));
             var response = new
             {
                 DeliveryAddressId = deliveryAddress.AddressId,
@@ -660,7 +678,7 @@ namespace OnlineShopping.Controllers
                 FurnitureName = orderFurniture.Furniture.FurnitureName,
                 FurnitureSpecificationId = furnitureSpecificationId,
                 FurnitureSpecificationName = orderFurniture.FurnitureSpecificationName,
-                FurnitureSpecificationImage = orderFurniture.Attachments.Count > 0 ? _firebaseService.GetDownloadUrl(orderFurniture.Attachments.First().Path) : "",
+                FurnitureSpecificationImage = orderFurniture.Attachments.IsNullOrEmpty() ? "" : _firebaseService.GetDownloadUrl(orderFurniture.Attachments.First().Path),
                 Quantity = Quantity,
                 Payments = paymentMethods,
                 TotalCost = Math.Round(orderFurniture.Price * Quantity, 2)
@@ -674,7 +692,7 @@ namespace OnlineShopping.Controllers
         {
             if (cartIdList.IsNullOrEmpty()) return BadRequest("cartId is required");
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             //var checkCustomerInfor = CheckCustomerInfor(loggedInUser);
             //if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
@@ -714,6 +732,7 @@ namespace OnlineShopping.Controllers
             };
             return Ok(response);
         }
+
         //CUSTOMIZE FURNITURE
         [HttpGet("checkout-customize-furniture")]
         [Authorize(Roles = "CUSTOMER")]
@@ -723,9 +742,7 @@ namespace OnlineShopping.Controllers
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-            //var checkCustomerInfor = CheckCustomerInfor(loggedInUser);
-            //if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
-            //    new Response() { Status = "Error", Message = checkCustomerInfor });
+            if (_projectHelper.CheckUserAddress(loggedInUser)) return BadRequest(new Response("Error", "User must add address before order"));
             var customizeFurnitureList = loggedInUser.CustomizeFurnitures.ToList();
             var selectedItems = new List<CustomizeFurnitureCheckout>();
             foreach (var id in customizeFurnitureIdList)
@@ -765,7 +782,7 @@ namespace OnlineShopping.Controllers
                                                                                             //ORDER
         [HttpPost("order")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> Order(OrderViewModel model)
+        public async Task<IActionResult> Order([FromBody] OrderViewModel model)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Loggined user not found ");
@@ -785,7 +802,7 @@ namespace OnlineShopping.Controllers
                 OrderDate = DateTime.Now,
                 DeliveryAddress = deliverAddress.Address.ToString(),
                 Note = model.Note == null ? "None" : model.Note,
-                Status = "Pending",
+                Status = "Processing",
                 IsPaid = false
             };
             try
@@ -808,7 +825,7 @@ namespace OnlineShopping.Controllers
                     var furnitureExist  = await _dbContext.FurnitureSpecifications.FindAsync(item.ItemId);
                     if (furnitureExist == null) return BadRequest($"The furniture with id = {item.ItemId} was not found");
                     if (furnitureExist.FurnitureRepositories.IsNullOrEmpty() || furnitureExist.FurnitureRepositories.Sum(fr => fr.Available) == 0)
-                        return BadRequest($"Cannot order furniture with id = {furnitureExist} because it is out of stock"); 
+                        return BadRequest($"Cannot order furniture with id = {furnitureExist.FurnitureId} because it is out of stock"); 
                     var orderItem = new FurnitureOrderDetail()
                     {
 
@@ -874,7 +891,7 @@ namespace OnlineShopping.Controllers
                     {
                         if (vnp_ResponseCode == "00" && vnp_TransactionStatus == "00")
                         {
-                            //Thanh toan thanh cong
+
                             var order = await _dbContext.Orders.FindAsync(orderId);
                             if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty()) order.Customer.Debit = order.TotalCost / 2;
                             order.IsPaid = true;
@@ -886,7 +903,7 @@ namespace OnlineShopping.Controllers
                         }
                         else
                         {
-                            //Thanh toan khong thanh cong. Ma loi: vnp_ResponseCode
+                        
                             return StatusCode(StatusCodes.Status406NotAcceptable, 
                                 new Response("error", $"error payment OrderId={orderId}"));
                             
@@ -934,17 +951,25 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> GetOrder(string status)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             var orderList = new List<Order>();
             if (status.Equals("All")) orderList = loggedInUser.Orders.ToList();
             else orderList = loggedInUser.Orders.Where(o => o.Status.Equals(status)).ToList();
             if (orderList.Count == 0) return NotFound($"There is no order in status: {status}");
+            
             var response = new List<object>();
             foreach (var order in orderList)
             {
                 if (order.TotalCost > 0)
                 {
+                    bool isValid = (order.Status.Equals("Processing") && order.Payment.PaymentId != 1 && DateTime.Now > order.OrderDate.AddMinutes(30)) ? false : true;
+                    if (!isValid)
+                    {
+                        order.Status = "Canceled";
+                        _dbContext.Update(order);
+                        await _dbContext.SaveChangesAsync();
+                    }
                     var furnitures = order.FurnitureOrderDetails.Select(o => new
                     {
                         FurnitureId = o.FurnitureSpecification.Furniture.FurnitureId,
@@ -957,9 +982,11 @@ namespace OnlineShopping.Controllers
                     var data = new
                     {
                         OrderId = order.OrderId,
+                        DeliveryAddress = order.DeliveryAddress,
                         Furniture = furnitures,
                         PaymentMethod = order.Payment.PaymentMethod,
                         TotalCost = order.TotalCost,
+                        OrderDate = order.OrderDate,
                         Status = order.Status
 
                     };
@@ -986,7 +1013,8 @@ namespace OnlineShopping.Controllers
                 FurnitureName = fb.FurnitureSpecification.Furniture.FurnitureName,
                 FeedbackImages = fb.Attachements.Count > 0 ? fb.Attachements.Select(a => new
                 {
-                    url = _firebaseService.GetDownloadUrl(a.Path)
+                    url = _firebaseService.GetDownloadUrl(a.Path),
+                    type = a.Type
                 }) : null,
                 Content = fb.Content,
                 VoteStar = fb.VoteStar
@@ -996,7 +1024,7 @@ namespace OnlineShopping.Controllers
 
         [HttpPost("create-feedback")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> CreationFeedback([FromForm]FeedbackViewModel model)
+        public async Task<IActionResult> CreationFeedback([FromForm] FeedbackViewModel model)
         {
             //validation
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -1111,8 +1139,8 @@ namespace OnlineShopping.Controllers
             if (status.Equals("All")) customizeFurnitures = loggedInUser.CustomizeFurnitures.ToList();
             else customizeFurnitures = loggedInUser.CustomizeFurnitures.Where(cf => cf.Result.Status.Equals(status)).ToList();
             if (customizeFurnitures.Count == 0) return NotFound($"There is no customize furniture with {status} status");
-            try
-            {
+            //try
+            //{
                 var response = customizeFurnitures.Select(cf => new
                 {
                     CustomizeFurnitureId = cf.CustomizeFurnitureId,
@@ -1128,12 +1156,13 @@ namespace OnlineShopping.Controllers
                     Quantity = cf.Quantity,
                     DesiredCompletionDate = cf.DesiredCompletionDate,
                     CreationDate = cf.CreationDate,
-                    Images = cf.Attachments.Where(a => a.Type.Equals("Images")).Select(a => new
+                    // Blabla = cf.Attachments.Count(),
+                    Images = cf.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
                     {
                         AttachmentName = a.AttachmentName,
                         Path = _firebaseService.GetDownloadUrl(a.Path)
                     }),
-                    Videos = cf.Attachments.Where(a => a.Type.Equals("Videos")).Select(a => new
+                    Videos = cf.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
                     {
                         AttachmentName = a.AttachmentName,
                         Path = _firebaseService.GetDownloadUrl(a.Path)
@@ -1148,12 +1177,12 @@ namespace OnlineShopping.Controllers
 
                 }).ToList();
                 return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new Response("Error", "An error occurs during fetch data"));
-            }
+            //}
+            //catch (Exception ex)
+            //{
+            //    return StatusCode(StatusCodes.Status500InternalServerError,
+            //        new Response("Error", "An error occurs during fetch data"));
+            //}
 
         }
 
@@ -1192,7 +1221,7 @@ namespace OnlineShopping.Controllers
             var newResult = new Result()
             {
                 CustomizeFurnitureId = newCustomizeFurniture.CustomizeFurnitureId,
-                Status = "Pending"
+                Status = "Processing"
             };
             await _dbContext.AddAsync(newResult);
             await _dbContext.SaveChangesAsync();
@@ -1346,7 +1375,7 @@ namespace OnlineShopping.Controllers
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             var orderExist = loggedInUser.Orders.FirstOrDefault(w => w.OrderId == userInput.OrderId);
             if (orderExist == null) return NotFound($"The order witd id = {userInput.OrderId} does not exist in the ordered list of customer");
-            if (!orderExist.Status.Equals("Deliveried")) return BadRequest($"Not allow to create warranty when order is in {orderExist.Status} status");
+            if (!orderExist.Status.Equals("Delivered")) return BadRequest($"Not allow to create warranty when order is in {orderExist.Status} status");
             
             Warranty newWarranty = new Warranty()
             {
@@ -1451,256 +1480,6 @@ namespace OnlineShopping.Controllers
                    new Response("Error", "An error occurs when removing warranty claim"));
             }
 
-        }
-
-
-        ////SUPPORTED METHODs
-        //[ApiExplorerSettings(IgnoreApi = true)]
-        //public bool Refund(Order order)
-        //{
-        //    var transition = GetTransition(order);
-        //    if (transition == null) return false;
-        //    var vnp_Api = _config["VNPAY:Api"];
-        //    var vnp_HashSecret = _config["VNPAY:HashSecret"]; //Secret KEy
-        //    var vnp_TmnCode = _config["VNPAY:TmnCode"]; // Terminal Id
-            
-        //    var vnp_RequestId = DateTime.Now.Ticks.ToString(); //Mã hệ thống merchant tự sinh ứng với mỗi yêu cầu hoàn tiền giao dịch. Mã này là duy nhất dùng để phân biệt các yêu cầu truy vấn giao dịch. Không được trùng lặp trong ngày.
-        //    var vnp_Version = VnPayService.VERSION; //2.1.0
-        //    var vnp_Command = "refund";
-        //    var vnp_TransactionType = "02";
-        //    var vnp_Amount = transition.Amount;
-        //    var vnp_TxnRef = transition.TxnRef; // Mã giao dịch thanh toán tham chiếu
-        //    var vnp_OrderInfo = "Hoan tien giao dich:" + order.OrderId;
-        //    var vnp_TransactionNo = transition.TransactionNo;
-        //    var vnp_TransactionDate = transition.PayDate;
-        //    var vnp_CreateDate = DateTime.Now.ToString("yyyyMMddHHmmss");
-        //    var vnp_CreateBy = order.Customer.UserName;
-        //    string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString();
-        //    if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
-        //    var vnp_IpAddr = ipAddress;
-
-        //    var signData = vnp_RequestId + "|" + vnp_Version + "|" + vnp_Command + "|" + vnp_TmnCode + "|" + vnp_TransactionType + "|" + vnp_TxnRef + "|" + vnp_Amount + "|" + vnp_TransactionNo + "|" + vnp_TransactionDate + "|" + vnp_CreateBy + "|" + vnp_CreateDate + "|" + vnp_IpAddr + "|" + vnp_OrderInfo;
-        //    var vnp_SecureHash = Utils.HmacSHA512(vnp_HashSecret, signData);
-
-        //    var rfData = new
-        //    {
-        //        vnp_RequestId = vnp_RequestId,
-        //        vnp_Version = vnp_Version,
-        //        vnp_Command = vnp_Command,
-        //        vnp_TmnCode = vnp_TmnCode,
-        //        vnp_TransactionType = vnp_TransactionType,
-        //        vnp_TxnRef = vnp_TxnRef,
-        //        vnp_Amount = vnp_Amount,
-        //        vnp_OrderInfo = vnp_OrderInfo,
-        //        vnp_TransactionNo = vnp_TransactionNo,
-        //        vnp_TransactionDate = vnp_TransactionDate,
-        //        vnp_CreateBy = vnp_CreateBy,
-        //        vnp_CreateDate = vnp_CreateDate,
-        //        vnp_IpAddr = vnp_IpAddr,
-        //        vnp_SecureHash = vnp_SecureHash
-
-        //    };
-        //    var jsonData = JsonConvert.SerializeObject(rfData);
-        //    var httpWebRequest = (HttpWebRequest)WebRequest.Create(vnp_Api);
-        //    httpWebRequest.ContentType = "application/json";
-        //    httpWebRequest.Method = "POST";
-
-        //    using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
-        //    {
-        //        streamWriter.Write(jsonData);
-        //    }
-        //    var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-        //    var strData = "";
-        //    using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
-        //    {
-        //        strData = streamReader.ReadToEnd();
-        //    }
-        //    if (!strData.Contains("\"vnp_ResponseCode\":\"00\"")) return false;
-        //    return true;
-        //}
-
-        //[ApiExplorerSettings(IgnoreApi = true)]
-        //public VnPayTransition GetTransition(Order order)
-        //{
-        //    var vnp_Api = _config["VNPAY:Api"];
-        //    var vnp_HashSecret = _config["VNPAY:HashSecret"];
-        //    var vnp_TmnCode = _config["VNPAY:TmnCode"]; 
-
-        //    var vnp_RequestId = DateTime.Now.Ticks.ToString(); //Mã hệ thống merchant tự sinh ứng với mỗi yêu cầu truy vấn giao dịch. Mã này là duy nhất dùng để phân biệt các yêu cầu truy vấn giao dịch. Không được trùng lặp trong ngày.
-        //    var vnp_Version = VnPayService.VERSION; //2.1.0
-        //    var vnp_Command = "querydr";
-        //    var vnp_TxnRef = order.OrderId.ToString(); // Mã giao dịch thanh toán tham chiếu
-        //    var vnp_OrderInfo = "Payment orders:" + order.OrderId;
-        //    var vnp_TransactionDate = order.OrderDate.ToString("yyyyMMdd");
-        //    var vnp_CreateDate = DateTime.Now.ToString("yyyyMMddHHmmss");
-
-        //    string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString();
-        //    if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
-        //    var vnp_IpAddr = ipAddress;
-
-        //    var signData = vnp_RequestId + "|" + vnp_Version + "|" + vnp_Command + "|" + vnp_TmnCode + "|" + vnp_TxnRef + "|" + vnp_TransactionDate + "|" + vnp_CreateDate + "|" + vnp_IpAddr + "|" + vnp_OrderInfo;
-        //    var vnp_SecureHash = Utils.HmacSHA512(vnp_HashSecret, signData);
-
-        //    var qdrData = new
-        //    {
-        //        vnp_RequestId = vnp_RequestId,
-        //        vnp_Version = vnp_Version,
-        //        vnp_Command = vnp_Command,
-        //        vnp_TmnCode = vnp_TmnCode,
-        //        vnp_TxnRef = vnp_TxnRef,
-        //        vnp_OrderInfo = vnp_OrderInfo,
-        //        vnp_TransactionDate = vnp_TransactionDate,
-        //        vnp_CreateDate = vnp_CreateDate,
-        //        vnp_IpAddr = vnp_IpAddr,
-        //        vnp_SecureHash = vnp_SecureHash
-
-        //    };
-        //    var jsonData = JsonConvert.SerializeObject(qdrData);
-
-        //    var httpWebRequest = (HttpWebRequest)WebRequest.Create(vnp_Api);
-        //    httpWebRequest.ContentType = "application/json";
-        //    httpWebRequest.Method = "POST";
-
-        //    using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
-        //    {
-        //        streamWriter.Write(jsonData);
-        //    }
-        //    var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-        //    var strData = "";
-        //    using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
-        //    {
-        //        strData = streamReader.ReadToEnd();
-        //    }
-        //    if (!strData.Contains("\"vnp_ResponseCode\":\"00\"")) return null;
-        //    JObject data = JObject.Parse(strData);
-        //    var vnPayTransition = new VnPayTransition()
-        //    {
-        //            TxnRef = (string) data["vnp_TxnRef"],
-        //            Amount = (string)data["vnp_Amount"],
-        //            OrderInfo = (string)data["vnp_OrderInfo"],
-        //            BankCode = (string)data["vnp_BankCode"],
-        //            PayDate = (string)data["vnp_PayDate"],
-        //            TransactionNo = (string)data["vnp_TransactionNo"],
-        //            TransactionType = (string)data["vnp_TransactionType"],
-        //            TransactionStatus = (string)data["vnp_TransactionStatus"],
-        //    };
-        //    return vnPayTransition;
-        //}
-
-        //[ApiExplorerSettings(IgnoreApi = true)]
-        //public string UrlPayment(int typePayment, int orderId)
-        //{
-
-        //    var order = _dbContext.Orders.FirstOrDefault(o => o.OrderId == orderId);
-
-        //    //Get Config Info
-        //    string vnp_Returnurl = _config["VNPAY:ReturnUrl"]; //URL nhan ket qua tra ve 
-        //    string vnp_Url = _config["VNPAY:Url"]; //URL thanh toan cua VNPAY 
-        //    string vnp_TmnCode = _config["VNPAY:TmnCode"]; //Ma định danh merchant kết nối (Terminal Id)
-        //    string vnp_HashSecret = _config["VNPAY:HashSecret"]; //Secret Key
-        //    //Build URL for VNPAY
-        //    VnPayService vnpay = new VnPayService();
-        //    vnpay.AddRequestData("vnp_Version", VnPayService.VERSION);
-        //    vnpay.AddRequestData("vnp_Command", "pay");
-        //    vnpay.AddRequestData("vnp_TmnCode", vnp_TmnCode);
-        //    if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty()) 
-        //    {
-        //        vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000/2).ToString()); // thanh toán trước 50% nếu là đơn customize
-        //    } else
-        //    {
-        //        vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000).ToString()); //Số tiền thanh toán. Số tiền không mang các ký tự phân tách thập phân, phần nghìn, ký tự tiền tệ. Để gửi số tiền thanh toán là 100,000 VND (một trăm nghìn VNĐ) thì merchant cần nhân thêm 100 lần (khử phần thập phân), sau đó gửi sang VNPAY là: 10000000
-        //    }
-        //    var payment = _dbContext.Payments.Find(typePayment);
-        //    vnpay.AddRequestData("vnp_BankCode", payment.PaymentMethod);
-        //    vnpay.AddRequestData("vnp_CreateDate", order.OrderDate.ToString("yyyyMMddHHmmss"));
-        //    vnpay.AddRequestData("vnp_CurrCode", "VND");
-        //    string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString();
-        //    if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
-        //    vnpay.AddRequestData("vnp_IpAddr", ipAddress);
-        //    vnpay.AddRequestData("vnp_Locale", "en");
-        //    vnpay.AddRequestData("vnp_OrderInfo", "Payment orders:" + order.OrderId);
-        //    vnpay.AddRequestData("vnp_OrderType", "other"); //default value: other
-        //    vnpay.AddRequestData("vnp_ReturnUrl", vnp_Returnurl);
-        //    vnpay.AddRequestData("vnp_TxnRef", order.OrderId.ToString()); // Mã tham chiếu của giao dịch tại hệ thống của merchant. Mã này là duy nhất dùng để phân biệt các đơn hàng gửi sang VNPAY. Không được trùng lặp trong ngày
-        //    string paymentUrl = vnpay.CreateRequestUrl(vnp_Url, vnp_HashSecret);
-        //    return paymentUrl;
-        //}
-
-        //[ApiExplorerSettings(IgnoreApi = true)]
-        //public async Task<bool> VerifyPhoneNum(string phoneNums, string totpCode)
-        //{
-        //    byte[] secretKey = Encoding.ASCII.GetBytes(phoneNums);
-        //    var otp = new Totp(secretKey, step: 300, totpSize: 6);
-        //    var window = new VerificationWindow(previous: 1, future: 1);
-        //    long timeStepMatched;
-        //    var result = otp.VerifyTotp(DateTime.Now, totpCode, out timeStepMatched, window);
-        //    if (!result)
-        //    {
-        //        return false;
-        //    }
-        //    return true;
-        //}
-        
-        //[ApiExplorerSettings(IgnoreApi = true)]
-        //private JwtSecurityToken GenerateJWTToken(User user, IList<string> roles)
-        //{
-        //    var authClaims = new List<Claim>
-        //    {
-        //        new Claim(ClaimTypes.Email, user.Email),
-        //        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        //    };
-        //    foreach (var role in roles)
-        //    {
-        //        authClaims.Add(new Claim(ClaimTypes.Role, role));
-        //    }
-        //    var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Secret"]));
-        //    var token = new JwtSecurityToken(
-        //        issuer: _config["JWT:ValidIssuer"],
-        //        audience: _config["JWT:ValidAudience"],
-        //        expires: DateTime.Now.AddDays(2),
-        //        claims: authClaims,
-        //        signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
-        //        );
-        //    return token;
-        //}
-
-        //[ApiExplorerSettings(IgnoreApi = true)]
-        //public async Task<bool> CreateUserInfor(string email)
-        //{
-        //    var user = await _userManager.FindByEmailAsync(email);
-        //    if (user == null) return false;
-
-        //    var userPoint = new Models.Purchase.Point()
-        //    {
-        //        CustomerId = user.Id,
-        //        User = user,
-        //        Description = "Create account successfully +5 point",
-        //        TotalPoint = 5,
-        //        History = DateTime.Now
-        //    };
-        //    var announcement = new Announcement()
-        //    {
-        //        UserId = user.Id,
-        //        User = user,
-        //        Title = "Welcome",
-        //        Content = "Welcome to Furniture Shopping Online, wish you have a great shopping experience!",
-        //        CreationDate = DateTime.Now
-        //    };
-        //    var cart = new Cart()
-        //    {
-        //        CustomerId = user.Id
-        //    };
-        //    await _dbContext.AddRangeAsync(announcement, userPoint, cart);
-        //    await _dbContext.SaveChangesAsync();
-        //    return true;
-        //}
-
-        //[ApiExplorerSettings(IgnoreApi = true)]
-        //public string CheckCustomerInfor(User customer)
-        //{
-        //    if (customer.UserAddresses.Count == 0 || customer.UserAddresses == null) return "The customer must add address to use this fuction";
-        //    if (customer.PhoneNumber == null || !customer.PhoneNumberConfirmed) return "The customer must add phone number and verify it to use this fuction";
-        //    return null;
-        //}
+        }     
     }
 }
