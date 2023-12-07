@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "t8yFL4wrFhvvBh8r16zsQVXaFh3eAWxjAmryg0Me4KxRJm65lvSRzZPL5SxgpkM0OUhBLBaaQvUaMIrMQVEqaQ==",
+  "dgSpecHash": "AYGQEn8RCN3rI6fQgKwQ/t9pIpgvuoW3yhzhdHj6CTCvtBNO/LH3Nrx35ykhJz79uPfxFrsF2Zyiovixa79Q3g==",
   "success": true,
   "projectFilePath": "D:\\FinalYearProject\\Project\\BackEnd\\OnlineShopping\\OnlineShopping.csproj",
   "expectedPackageFiles": [
@@ -20,6 +20,7 @@
     "C:\\Users\\Dan Truong\\.nuget\\packages\\microsoft.aspnet.webapi.client\\5.2.9\\microsoft.aspnet.webapi.client.5.2.9.nupkg.sha512",
     "C:\\Users\\Dan Truong\\.nuget\\packages\\microsoft.aspnet.webapi.core\\5.2.9\\microsoft.aspnet.webapi.core.5.2.9.nupkg.sha512",
     "C:\\Users\\Dan Truong\\.nuget\\packages\\microsoft.aspnet.webapi.cors\\5.2.9\\microsoft.aspnet.webapi.cors.5.2.9.nupkg.sha512",
+    "C:\\Users\\Dan Truong\\.nuget\\packages\\microsoft.aspnetcore.authentication.facebook\\6.0.25\\microsoft.aspnetcore.authentication.facebook.6.0.25.nupkg.sha512",
     "C:\\Users\\Dan Truong\\.nuget\\packages\\microsoft.aspnetcore.authentication.google\\6.0.11\\microsoft.aspnetcore.authentication.google.6.0.11.nupkg.sha512",
     "C:\\Users\\Dan Truong\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\6.0.15\\microsoft.aspnetcore.authentication.jwtbearer.6.0.15.nupkg.sha512",
     "C:\\Users\\Dan Truong\\.nuget\\packages\\microsoft.aspnetcore.cryptography.internal\\6.0.15\\microsoft.aspnetcore.cryptography.internal.6.0.15.nupkg.sha512",
