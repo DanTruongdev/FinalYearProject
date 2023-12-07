@@ -57,6 +57,5 @@ namespace OnlineShopping.Models
         public virtual ICollection<FurnitureRepositoryHistory>? FurnitureRepositoryHistories { get; set; }
         public virtual ICollection<Post>? Posts { get; set; }
        
-      
     }
 }

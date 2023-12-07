@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Google.Api.Gax;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 using OnlineShopping.Data;
 using OnlineShopping.Hubs;
 using OnlineShopping.Hubs.Models;
@@ -217,6 +219,7 @@ namespace OnlineShopping.Controllers
                             expiration = jwtToken.ValidTo
                         };
                         _hubContext.Clients.All.SendAsync("ReceivedJWTToken", new JwtToken(new JwtSecurityTokenHandler().WriteToken(jwtToken), jwtToken.ValidTo));
+                        return RedirectPermanent($"http://localhost:8080?token={new JwtSecurityTokenHandler().WriteToken(jwtToken)}&expiration={jwtToken.ValidTo}");
                         //return the token
                         return Ok(response);
                     }
@@ -275,9 +278,20 @@ namespace OnlineShopping.Controllers
             //checking if the user existed and password was valid
             if (loggedInUser == null || !passwordChecker) return Unauthorized(new Response("Error", "Invalid email or password"));
             if (!loggedInUser.IsActivated) return StatusCode(StatusCodes.Status405MethodNotAllowed, new Response("Error", "Inactive accounts are not allowed to log in"));
-
+            //truong hop nguoi dung dang ki truoc do nhung chu confim email
+            if (!loggedInUser.EmailConfirmed)
+            {
+                var token = await _userManager.GenerateEmailConfirmationTokenAsync(loggedInUser);
+                var confirmationLink = Url.Action("ConfirmEmail",
+                    "Authentication", new { token, email = loggedInUser.Email }, Request.Scheme);
+                var message = new Message(new string[] { loggedInUser.Email! },
+                    "Confirmation email link", $"Please click to the following Url to verify your email: \n {confirmationLink!}");
+                _emailService.SendEmail(message);
+                return Ok(new Response("Success", $"Please confirm account before login via URl that sent to {loggedInUser.Email}"));
+            }
             await _signInManager.SignOutAsync();
             await _signInManager.PasswordSignInAsync(loggedInUser, loginModel.Password, loginModel.RememberMe.Value, true);
+
             if (loggedInUser.TwoFactorEnabled)
             {
                 var token = await _userManager.GenerateTwoFactorTokenAsync(loggedInUser, "Email");

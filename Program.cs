@@ -59,9 +59,7 @@ builder.Services.AddAuthentication(options =>
 {
     googleOptions.ClientId = configuration["GoogleAuthentication:ClientID"];
     googleOptions.ClientSecret = configuration["GoogleAuthentication:ClientSecret"];
-}
-
-);
+});
 
 
 //Add config for required email
@@ -69,7 +67,7 @@ builder.Services.Configure<IdentityOptions>(
     options => options.SignIn.RequireConfirmedEmail = true
 
 );
-//Add config for required email
+//Add config for required phonenumber
 builder.Services.Configure<IdentityOptions>(
     options => options.SignIn.RequireConfirmedPhoneNumber = false
 
@@ -78,6 +76,9 @@ builder.Services.Configure<IdentityOptions>(
 // Forgot password 
 builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
     options.TokenLifespan = TimeSpan.FromMinutes(10));
+
+
+
 
 
 //Add Email Configs

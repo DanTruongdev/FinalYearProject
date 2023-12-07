@@ -13,7 +13,6 @@ namespace OnlineShopping.ViewModels.Post
         public string Content { get; set; }
         [Required]
         public string Type { get; set; } //Tip or New
-        public IFormFile? Image { get; set; }
-          
+        public IFormFile? Image { get; set; }         
     }
 }

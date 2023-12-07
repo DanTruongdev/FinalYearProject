@@ -273,35 +273,21 @@ namespace OnlineShopping.Controllers
 
 
 
-       
 
 
 
-        //view import history
 
 
-        //export csv
 
+
+        //export account csv ==> view in user controller
+        
 
 
         //furniture/furniture specification, category, collection
-        [HttpGet("shop-data/furnitures/search")]
-        public async Task<IActionResult> SearchFurnitures(string searchString)
-        {
-            return RedirectToAction("SearchFurniture", "Customer", new { keyword = searchString });
-        }
-
-        [HttpGet("shop-data/furniures")]
-        public async Task<IActionResult> GetAllFurnitures()
-        {
-            return RedirectToAction("GetAllFurniture", "Customer");
-        }
-        [HttpGet("shop-data/furniures/{furnitureId}")]
-        public async Task<IActionResult> GetFurnitureSpecificationById([FromRoute] int furnitureId)
-        {
-            return RedirectToAction("GetFurnitureSpecificationById", "Customer", new { id = furnitureId });
-        }
-
+        
+        //view all and search furniture, furniture specification function redirects to customer controller
+        
         [HttpPost("shop-data/furnitures/add")]
         public async Task<IActionResult> AddFurniture([FromForm] AddFurnitureViewModel userInput)
         {
@@ -365,29 +351,34 @@ namespace OnlineShopping.Controllers
                 Price = userInput.Price,
                 Description = userInput.Description
             };
-            await _dbContext.AddAsync(newFurnitureSpecification);
-            await _dbContext.SaveChangesAsync();
-
-            if (userInput.UploadFiles.Count > 0)
-            {
-                foreach (var file in userInput.UploadFiles)
-                {
-                    var newAttachment = new FurnitureSpecificationAttachment()
-                    {
-                        FurnitureSpecificationId = newFurnitureSpecification.FurnitureSpecificationId,
-                        AttachmentName = file.FileName,
-                        Path = _firebaseService.UploadFile(file),
-                        Type = _firebaseService.ImageOrVideo(file)
-                    };
-                    await _dbContext.AddAsync(newAttachment);
-                }            
-            }
-
-
-
             try
             {
-               
+                await _dbContext.AddAsync(newFurnitureSpecification);
+                await _dbContext.SaveChangesAsync();
+
+                if (userInput.UploadFiles.Count > 0)
+                {
+                    foreach (var file in userInput.UploadFiles)
+                    {
+                        var newAttachment = new FurnitureSpecificationAttachment()
+                        {
+                            FurnitureSpecificationId = newFurnitureSpecification.FurnitureSpecificationId,
+                            AttachmentName = file.FileName,
+                            Path = _firebaseService.UploadFile(file),
+                            Type = _firebaseService.ImageOrVideo(file)
+                        };
+                        await _dbContext.AddAsync(newAttachment);
+                    }            
+                }
+
+                FurnitureRepository newFurnitureRepository = new FurnitureRepository()
+                {
+                    RepositoryId = 1,
+                    FurnitureSpecificationId = newFurnitureSpecification.FurnitureSpecificationId,
+                    Available = 0
+                };
+                await _dbContext.AddAsync(newFurnitureRepository);
+
                 await _dbContext.SaveChangesAsync();
                 return Created("Create furniture specification successfully", new
                 {
@@ -695,6 +686,8 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> AddCategory([Required] string categoryName)
         {
             if (categoryName.Length < 2) return BadRequest("Category name must be greater than 1 character");
+            var categoryExist = await _dbContext.Categories.FirstOrDefaultAsync(c => c.CategoryName.ToUpper().Equals(categoryName.ToUpper()));
+            if (categoryExist != null) return BadRequest(new Response("Error", "This category already exists"));
             Category newCategory = new Category()
             {
                 CategoryName = categoryName
@@ -718,6 +711,8 @@ namespace OnlineShopping.Controllers
             Category editCategory = await _dbContext.Categories.FindAsync(categoryId);
             if (editCategory == null) return NotFound("Category not found");
             if (categoryName.Length < 2) return BadRequest("Category name must be greater than 1 character");
+            var categoryExist = await _dbContext.Categories.FirstOrDefaultAsync(c => c.CategoryName.ToUpper().Equals(categoryName.ToUpper()));
+            if (categoryExist != null) return BadRequest(new Response("Error", "This category already exists"));
             editCategory.CategoryName = categoryName;
             try
             {
@@ -781,10 +776,10 @@ namespace OnlineShopping.Controllers
         }
 
         
-        //add account in authentication controller!!!!
+        //add account in authentication controller
 
 
-            [HttpPut("accounts/disable")]
+        [HttpPut("accounts/disable")]
         public async Task<IActionResult> ToggleAccountStatus(string userId)
         { 
             User userExist = await _userManager.FindByIdAsync(userId);

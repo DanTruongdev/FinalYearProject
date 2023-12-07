@@ -1,36 +1,32 @@
 ﻿using Castle.Core.Internal;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using OnlineShopping.Data;
 using OnlineShopping.Libraries.Models;
 using OnlineShopping.Models;
 using OnlineShopping.Models.Customer;
 using OnlineShopping.Models.Purchase;
+using OnlineShopping.Models.Warehouse;
 using OnlineShopping.ViewModels.VNPAY;
-using OnlineShopping.ViewModels;
 using OtpNet;
+using RestSharp;
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.AspNetCore.Mvc;
-using OnlineShopping.Models.Warehouse;
 using System.Text.RegularExpressions;
-using System.IO;
-using Microsoft.OpenApi.Models;
-using RestSharp;
-using System.Threading;
-using Org.BouncyCastle.Crypto.Operators;
-using Org.BouncyCastle.Utilities.Net;
 
 namespace OnlineShopping.Libraries.Services
 {
-    public class ProjectHelper : ControllerBase, IProjectHelper
+    public class ProjectHelper : IProjectHelper
     {
         private readonly ApplicationDbContext _dbContext;
-        private readonly UserManager<User> _userManager;     
+        private readonly UserManager<User> _userManager;
         private readonly IConfiguration _config;
 
         public ProjectHelper(ApplicationDbContext dbContext, UserManager<User> userManager, IConfiguration config)
@@ -45,7 +41,7 @@ namespace OnlineShopping.Libraries.Services
             var transition = GetTransition(order);
             if (transition == null) return false;
             var vnp_Api = _config["VNPAY:Api"];
-            var vnp_HashSecret = _config["VNPAY:HashSecret"]; 
+            var vnp_HashSecret = _config["VNPAY:HashSecret"];
             var vnp_TmnCode = _config["VNPAY:TmnCode"];
 
             var vnp_RequestId = DateTime.Now.Ticks.ToString(); //Mã hệ thống merchant tự sinh ứng với mỗi yêu cầu hoàn tiền giao dịch. Mã này là duy nhất dùng để phân biệt các yêu cầu truy vấn giao dịch. Không được trùng lặp trong ngày.
@@ -121,7 +117,7 @@ namespace OnlineShopping.Libraries.Services
 
             //string ipAddress = Response.HttpContext.Connection.RemoteIpAddress.ToString();
             //if (ipAddress.Equals("::1")) ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
-            string  ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
+            string ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
             var vnp_IpAddr = ipAddress;
 
             var signData = vnp_RequestId + "|" + vnp_Version + "|" + vnp_Command + "|" + vnp_TmnCode + "|" + vnp_TxnRef + "|" + vnp_TransactionDate + "|" + vnp_CreateDate + "|" + vnp_IpAddr + "|" + vnp_OrderInfo;
@@ -179,39 +175,32 @@ namespace OnlineShopping.Libraries.Services
             var order = _dbContext.Orders.FirstOrDefault(o => o.OrderId == orderId);
 
             //Get Config Info
-            string vnp_Returnurl = _config["VNPAY:ReturnUrl"]; 
-            string vnp_Url = _config["VNPAY:Url"]; 
-            string vnp_TmnCode = _config["VNPAY:TmnCode"]; 
-            string vnp_HashSecret = _config["VNPAY:HashSecret"]; 
+            string vnp_Returnurl = _config["VNPAY:ReturnUrl"];
+            string vnp_Url = _config["VNPAY:Url"];
+            string vnp_TmnCode = _config["VNPAY:TmnCode"];
+            string vnp_HashSecret = _config["VNPAY:HashSecret"];
             //Build URL for VNPAY
             VnPayService vnpay = new VnPayService();
             vnpay.AddRequestData("vnp_Version", VnPayService.VERSION);
             vnpay.AddRequestData("vnp_Command", "pay");
             vnpay.AddRequestData("vnp_TmnCode", vnp_TmnCode);
-            if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty())
-            {
-                vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000 / 2).ToString()); 
-            }
-            else
-            {
-                vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000).ToString());
-            }
+            vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000).ToString());
             var payment = _dbContext.Payments.Find(typePayment);
             vnpay.AddRequestData("vnp_BankCode", payment.PaymentMethod);
             vnpay.AddRequestData("vnp_CreateDate", order.OrderDate.ToString("yyyyMMddHHmmss"));
             vnpay.AddRequestData("vnp_CurrCode", "VND");
-            
+
             string ipAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList[1].ToString();
             vnpay.AddRequestData("vnp_IpAddr", ipAddress);
             vnpay.AddRequestData("vnp_Locale", "en");
             vnpay.AddRequestData("vnp_OrderInfo", "Payment orders:" + order.OrderId);
-            vnpay.AddRequestData("vnp_OrderType", "other"); 
+            vnpay.AddRequestData("vnp_OrderType", "other");
             vnpay.AddRequestData("vnp_ReturnUrl", vnp_Returnurl);
-            vnpay.AddRequestData("vnp_TxnRef", order.OrderId.ToString()); 
+            vnpay.AddRequestData("vnp_TxnRef", order.OrderId.ToString());
             string paymentUrl = vnpay.CreateRequestUrl(vnp_Url, vnp_HashSecret);
             return paymentUrl;
         }
-      
+
         public async Task<bool> VerifyPhoneNum(string phoneNums, string totpCode)
         {
             byte[] secretKey = Encoding.ASCII.GetBytes(phoneNums);
@@ -225,7 +214,7 @@ namespace OnlineShopping.Libraries.Services
             }
             return true;
         }
-       
+
         public JwtSecurityToken GenerateJWTToken(User user, IList<string> roles)
         {
             var authClaims = new List<Claim>
@@ -256,13 +245,13 @@ namespace OnlineShopping.Libraries.Services
 
             PointHistory newPointHistory = new PointHistory()
             {
-                CustomerId = user.Id,           
+                CustomerId = user.Id,
                 Description = "Create account successfully +200 point",
                 History = DateTime.Now
             };
             var announcement = new Announcement()
             {
-                UserId = user.Id,          
+                UserId = user.Id,
                 Title = "Welcome",
                 Content = "Welcome to L&L Store, wish you have a great shopping experience!",
                 CreationDate = DateTime.Now
@@ -278,7 +267,7 @@ namespace OnlineShopping.Libraries.Services
             };
             try
             {
-                _dbContext.Update(user); 
+                _dbContext.Update(user);
                 await _dbContext.AddRangeAsync(announcement, newPointHistory, cart, wishList);
                 await _dbContext.SaveChangesAsync();
                 return true;
@@ -287,22 +276,20 @@ namespace OnlineShopping.Libraries.Services
             {
                 return false;
             }
-            
+
         }
 
-     
-        public string CheckInforVerify(User user)
+
+        public string CheckUserInfor(User user)
         {
-            if (user.UserAddresses.Count == 0 || user.UserAddresses == null) return "Adding address is required to use this function";
+            if (!user.EmailConfirmed) return "The user email must be confirmed";
+            var defaultAddress = user.UserAddresses.IsNullOrEmpty() ? null : user.UserAddresses.FirstOrDefault(ua => ua.AddressType.Equals("DEFAULT"));
+            if (user.UserAddresses.IsNullOrEmpty() || defaultAddress == null) return "Adding address is required to use this function";
             if (user.PhoneNumber == null || !user.PhoneNumberConfirmed) return "Adding and verifying phone number are required to use this function";
             return null;
         }
 
-        public bool CheckUserAddress(User user)
-        {
-            if (user.UserAddresses.IsNullOrEmpty()) return false;
-            return true;
-        }
+
 
         public async Task<bool> CreateLogAsync(string assistantId, string activity)
         {
@@ -326,35 +313,32 @@ namespace OnlineShopping.Libraries.Services
             }
         }
 
-       
+
 
         public string FilterBadWords(string input)
         {
             //filter vietnamese          
-             string filePath = "VNbadwords.txt";
-             string[] vnBadWords = System.IO.File.ReadAllLines(filePath);                        
-             string pattern = @"\b(" + string.Join("|", vnBadWords.Select(Regex.Escape)) + @")\b";
-             Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
-             string content = regex.Replace(input, "***");
+            string filePath = "VNbadwords.txt";
+            string[] vnBadWords = System.IO.File.ReadAllLines(filePath);
+            string pattern = @"\b(" + string.Join("|", vnBadWords.Select(Regex.Escape)) + @")\b";
+            Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
+            string content = regex.Replace(input, "***");
 
             //filter english
             var client = new RestClient("https://api.apilayer.com/bad_words?censor_character=***");
             var request = new RestRequest()
                 .AddHeader("apikey", "ahpebO5MhcrobluOLxx0IbUwdpbd9viZ")
-                .AddParameter("text/plain", content, ParameterType.RequestBody);               
+                .AddParameter("text/plain", content, ParameterType.RequestBody);
             var response = client.Post<object>(request);
             JObject data = JObject.Parse(response.ToString());
-            return (string) data["censored_content"];
+            return (string)data["censored_content"];
         }
 
-        public async Task<bool> CreateAnnouncementAsync(string userId, string title, string content)
+        public async Task<bool> CreateAnnouncementAsync(User user, string title, string content)
         {
-            User userExist = await _userManager.FindByIdAsync(userId);
-            if (userExist == null) return false;
-            
             Announcement newAnnouncement = new Announcement()
             {
-                UserId = userExist.Id,
+                UserId = user.Id,
                 Title = title,
                 Content = content,
                 CreationDate = DateTime.Now,
@@ -362,6 +346,43 @@ namespace OnlineShopping.Libraries.Services
             try
             {
                 await _dbContext.AddAsync(newAnnouncement);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        public async Task<bool> UpdateCustomerSpentAsync(Order order)
+        {
+            try
+            {
+                var customer = order.Customer;
+                customer.Spent += order.TotalCost;
+                _dbContext.UpdateRange(customer);
+                await _dbContext.SaveChangesAsync();
+                return true;
+
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<bool> CreatePointHistoryAsync(User user, int point, string description)
+        {
+            try
+            {
+                string subDesciption = point < 0 ? $"{point}" : $"+{point}";
+                var newPointHistory = new PointHistory()
+                {
+                    CustomerId = user.Id,
+                    Description = description + " " + subDesciption,
+                    History = DateTime.Now
+                };
+                await _dbContext.AddAsync(newPointHistory);
                 await _dbContext.SaveChangesAsync();
                 return true;
             }

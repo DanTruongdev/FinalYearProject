@@ -1,25 +1,20 @@
-﻿using Bogus.DataSets;
-using Castle.Core.Internal;
+﻿using Castle.Core.Internal;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json.Linq;
 using OnlineShopping.Data;
 using OnlineShopping.Libraries.Models;
 using OnlineShopping.Libraries.Services;
 using OnlineShopping.Models;
 using OnlineShopping.Models.Customer;
-using OnlineShopping.Models.Warehouse;
 using OnlineShopping.ViewModels;
 using OnlineShopping.ViewModels.Address;
 using OnlineShopping.ViewModels.User;
 using OtpNet;
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using System.Text;
-using static System.Net.WebRequestMethods;
 
 namespace OnlineShopping.Controllers
 {
@@ -504,6 +499,42 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "The address remove failed"));
             }
 
+        }
+
+
+        [HttpGet("customer-infor/csv")]
+        public async Task<IActionResult> DownloadAllUserInforCSV()
+        {
+            var data = await _dbContext.Users.ToListAsync();
+            var csv = new StringBuilder();
+            string latestUpdate = "Latest Update: " + DateTime.Now.ToString();
+            string heading = "UserId,First Name,Last Name,Email,Phone Number,Role,Default Address,Gender,Spent,Debit,Creation Date, Status";
+            csv.AppendLine(latestUpdate);
+            csv.AppendLine(heading);
+            foreach (var user in data)
+            {
+                var role = _userManager.GetRolesAsync(user).Result.First();
+                var userAddress = user.UserAddresses.FirstOrDefault(a => a.AddressType.Equals("DEFAULT"));
+                var address = userAddress == null ? "" : userAddress.Address.ToString();
+                address = $"\"{address}\"";
+                var newRow = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11}",
+                         user.Id,
+                         user.FirstName,
+                         user.LastName,
+                         user.Email,
+                         user.PhoneNumber,
+                         role,
+                         address,
+                         user.Gender,
+                         user.Spent,
+                         user.Debit,
+                         user.CreationDate.ToString(),
+                         user.IsActivated ? "Activated" : "Inactivated"
+                       );
+                csv.AppendLine(newRow);
+            }
+            byte[] bytes = Encoding.ASCII.GetBytes(csv.ToString());
+            return File(bytes, "text/csv", "User_Information.csv");
         }
     }
 }

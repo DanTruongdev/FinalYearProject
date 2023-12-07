@@ -903,6 +903,7 @@ namespace OnlineShopping.Controllers
         [HttpDelete("warehouse/repositories/{repoId}/remove")]
         public async Task<IActionResult> RemoveRepository([FromRoute] int repoId, [Required] string password) // yeu cau nhap password de xoa
         {
+            if (repoId == 1) return BadRequest(new Response("Error", "Not allow to remove main repository with id = 1"));
             Repository repoExist = await _dbContext.Repositories.FindAsync(repoId);
             if (repoExist != null) return NotFound($"The repository with id = {repoId} was not found");
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -1088,15 +1089,14 @@ namespace OnlineShopping.Controllers
                         Quantity = item.Quantity,
                         Description = userInput.ExportReason,
                         CreationDate = userInput.ExportDate
-
                     };
                
                     var materialRepositoryExist = repoExist.MaterialRepositories.FirstOrDefault(r => r.MaterialId == item.Id);
                     materialRepositoryExist.Available -= item.Quantity;
-                    if (materialRepositoryExist.Available == 0) await _projectHelper.CreateAnnouncementAsync(loggedInUser.Id,
+                    if (materialRepositoryExist.Available == 0) await _projectHelper.CreateAnnouncementAsync(loggedInUser,
                                                                         $"Warning: {materialRepositoryExist.Material.MaterialName} is out of stock",
                                                                         $"{materialRepositoryExist.Material.MaterialName} is out of stock. Please import more");
-                    else if (materialRepositoryExist.Available < 4) await _projectHelper.CreateAnnouncementAsync(loggedInUser.Id,
+                    else if (materialRepositoryExist.Available < 4) await _projectHelper.CreateAnnouncementAsync(loggedInUser,
                                                                         $"Warning: {materialRepositoryExist.Material.MaterialName} is running out",
                                                                         $"The number of furniture left in repository is only {materialRepositoryExist.Available}.Please import more to avoid running out of stock");
                     _dbContext.Update(materialRepositoryExist);
@@ -1148,10 +1148,10 @@ namespace OnlineShopping.Controllers
 
                     var furnitureRepositoryExist = repoExist.FurnitureRepositories.FirstOrDefault(fr => fr.FurnitureSpecificationId.Equals(item.Id));
                     furnitureRepositoryExist.Available -= item.Quantity;
-                    if (furnitureRepositoryExist.Available == 0) await _projectHelper.CreateAnnouncementAsync(loggedInUser.Id,
+                    if (furnitureRepositoryExist.Available == 0) await _projectHelper.CreateAnnouncementAsync(loggedInUser,
                                                                         $"Warning: {furnitureRepositoryExist.FurnitureSpecification.FurnitureSpecificationName} is out of stock",
                                                                         $"{furnitureRepositoryExist.FurnitureSpecification.FurnitureSpecificationName} is out of stock. Please import more");
-                    else if (furnitureRepositoryExist.Available < 4) await _projectHelper.CreateAnnouncementAsync(loggedInUser.Id,
+                    else if (furnitureRepositoryExist.Available < 4) await _projectHelper.CreateAnnouncementAsync(loggedInUser,
                                                                         $"Warning: {furnitureRepositoryExist.FurnitureSpecification.FurnitureSpecificationName} is running out",
                                                                         $"The number of furniture left in repository is only {furnitureRepositoryExist.Available}.Please import more to avoid running out of stock");
                     _dbContext.Update(furnitureRepositoryExist);
@@ -1220,10 +1220,8 @@ namespace OnlineShopping.Controllers
                 else
                 {
                     toMaterialRepository.Available += tranferItemList[i].Quantity;
-                    _dbContext.Update(toMaterialRepository);
-
                 }
-
+                _dbContext.Update(toMaterialRepository);
                 MaterialRepositoryHistory newHistory1 = new MaterialRepositoryHistory()
                 {
                     RepositoryId = toRepoId,
@@ -1295,12 +1293,12 @@ namespace OnlineShopping.Controllers
 
             for (int i = 0; i < tranferItemList.Count(); i++)
             {
-                var toFurnitureRepository = fromRepoExist.FurnitureRepositories.FirstOrDefault(r => r.FurnitureSpecificationId.Equals(fromFurnitureRepositories[i].FurnitureSpecificationId));
+                var toFurnitureRepository = toRepoExist.FurnitureRepositories.FirstOrDefault(r => r.FurnitureSpecificationId.Equals(fromFurnitureRepositories[i].FurnitureSpecificationId));
                 if (toFurnitureRepository == null)
                 {
                     FurnitureRepository newFurnitureRepository = new FurnitureRepository()
                     {
-                        RepositoryId = fromRepoExist.RepositoryId,
+                        RepositoryId = toRepoExist.RepositoryId,
                         FurnitureSpecificationId = fromFurnitureRepositories[i].FurnitureSpecificationId,
                         Available = tranferItemList[i].Quantity
                     };
@@ -1312,7 +1310,7 @@ namespace OnlineShopping.Controllers
                     catch
                     {
                         return StatusCode(StatusCodes.Status500InternalServerError,
-                            new Response("Error", $"An error occurs when transfer furnitures from the repository with id {fromRepoExist} to the repository with id {toRepoExist}"));
+                            new Response("Error", $"An error occurs when transfer furnitures from the repository with id {fromRepoExist.RepositoryId} to the repository with id {toRepoExist.RepositoryId}"));
                     }
 
                 }
@@ -1356,14 +1354,14 @@ namespace OnlineShopping.Controllers
             try
             {
                 await _dbContext.SaveChangesAsync();
-                _projectHelper.CreateLogAsync(loggedInUser.Id, $"You has tranfferd furnitures from the repository with id {fromRepoExist} to the repository with id {toRepoExist} successfully");
-                return Ok($"Transfer materials from the repository with id {fromRepoExist} to the repository with id {toRepoExist} successfully");
+                _projectHelper.CreateLogAsync(loggedInUser.Id, $"You has tranfferd furnitures from the repository with id {fromRepoId} to the repository with id {toRepoId} successfully");
+                return Ok($"Transfer materials from the repository with id {fromRepoId} to the repository with id {toRepoId} successfully");
 
             }
             catch
             {
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                        new Response("Error", $"An error occurs when transfer furnitures from the repository with id {fromRepoExist} to the repository with id {toRepoExist}"));
+                        new Response("Error", $"An error occurs when transfer furnitures from the repository with id {fromRepoId} to the repository with id {toRepoId}"));
             }
 
         }
@@ -1491,6 +1489,32 @@ namespace OnlineShopping.Controllers
             return Ok(response);
         }
 
+        [HttpDelete("feedbacks/remove/{feedbackId}")]
+        public async Task<IActionResult> RemoveFeedback([FromRoute] int feedbackId)
+        {
+            var feedbackExist = await _dbContext.Feedbacks.FindAsync(feedbackId);
+            if (feedbackExist == null) return NotFound(new Response("Error",$"The feedback with id = {feedbackId} was not found"));
+            try
+            {
+                if (!feedbackExist.Attachements.IsNullOrEmpty())
+                {                
+                    foreach (var attachment in feedbackExist.Attachements)
+                    {
+                        _firebaseService.RemoveFile(attachment.Path);
+                    }
+                    feedbackExist.Attachements.Clear();
+                }
+
+                _dbContext.Remove(feedbackExist);
+                await _dbContext.SaveChangesAsync();
+                return NoContent();
+            } catch
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", "An error occurs when removing the feedback"));
+            }
+            
+        }
+
         //view furniture order
         [HttpGet("customer-requests/orders")]
         public async Task<IActionResult> GetAllOrder()
@@ -1533,11 +1557,28 @@ namespace OnlineShopping.Controllers
         {
             Order orderExist = await _dbContext.Orders.FindAsync(orderId);
             if (orderExist == null) return NotFound($"The order with id = {orderId} was not found");
-            List<string> statusList = new List<string>() { "Processing", "Canceled", "Preparing", "Delivering", "Delivered" };
+            List<string> statusList = new List<string>() { "Pending", "Canceled", "Preparing", "Delivering", "Delivered" };
             if (!statusList.Contains(status)) return BadRequest($"Status must be {statusList[0]}, {statusList[1]}, {statusList[2]}, {statusList[3]} or {statusList[4]}");
             orderExist.Status = status;
+            orderExist.IsPaid = true;
+            _projectHelper.CreateAnnouncementAsync(orderExist.Customer, "Order status has been changed", $"Your order is in {status} status");
             try
             {
+               if (status.Equals("Delivered"))
+                {
+                    var result = await _projectHelper.UpdateCustomerSpentAsync(orderExist);
+                    //update sold for furniture
+                    if (!orderExist.FurnitureOrderDetails.IsNullOrEmpty())
+                    {
+                        foreach (var item in orderExist.FurnitureOrderDetails)
+                        {
+                            var furniture = item.FurnitureSpecification.Furniture;
+                            furniture.Sold += item.Quantity;
+                            _dbContext.Update(furniture);
+                        }
+                    }
+                    if (!result) throw new Exception(); 
+                }
                 _dbContext.Update(orderExist);
                 await _dbContext.SaveChangesAsync();
                 return Ok($"Update the order with id = {orderId} successfully");
@@ -1545,9 +1586,8 @@ namespace OnlineShopping.Controllers
             catch
             {
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                             new Response("Error", $"An error occurs when updating the order with id = {orderId}"));
-            }
-           
+                             new Response("Error", $"An error occurs when updating the status of order with id = {orderId}"));
+            }       
         }
 
         //CRUD post

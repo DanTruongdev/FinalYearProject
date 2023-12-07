@@ -12,6 +12,6 @@ namespace OnlineShopping.ViewModels.Warranty
         public string WarrantyReasons { get; set; }
         [Required]
         [FileValidation]
-        public IFormFile[] UploadFiles { get; set; }
+        public List<IFormFile>? UploadFiles { get; set; }
     }
 }

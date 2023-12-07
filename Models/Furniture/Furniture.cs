@@ -1,6 +1,5 @@
 ﻿using OnlineShopping.Models.Purchase;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OnlineShopping.Models.Funiture
 {

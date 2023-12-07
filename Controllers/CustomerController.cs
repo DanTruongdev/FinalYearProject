@@ -20,6 +20,9 @@ using OnlineShopping.Models.Gallery;
 using Castle.Core.Internal;
 using OnlineShopping.ViewModels.Furniture;
 using OnlineShopping.ViewModels.Warranty;
+using System.Web.Http.Results;
+using Microsoft.EntityFrameworkCore.Internal;
+using OnlineShopping.Models.Warehouse;
 
 namespace OnlineShopping.Controllers
 {
@@ -50,13 +53,13 @@ namespace OnlineShopping.Controllers
             _projectHelper = projectHelper;
         }
 
-                                                   
+
 
         //FURNITURE
         [HttpGet("furnitures")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetAllFurniture() 
-        {         
+        public async Task<IActionResult> GetAllFurniture()
+        {
             var furnitures = await _dbContext.Furnitures.ToListAsync();
             var response = furnitures.Select(f => new
             {
@@ -65,31 +68,31 @@ namespace OnlineShopping.Controllers
                 VoteStar = f.VoteStar,
                 Sold = f.Sold,
                 Label = f.Label == null ? string.Empty : f.Label.LabelName,
-                CategoryId = f.CategoryId, 
+                CategoryId = f.CategoryId,
                 Category = f.Category.CategoryName,
-                Available = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Sum(fs => fs.FurnitureRepositories.Sum(fr => fr.Available)) : 0,
+                //Available = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Sum(fs => fs.FurnitureRepositories.Sum(fr => fr.Available)) : 0,
                 AppropriateRoom = f.AppopriateRoom,
                 Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
-                Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ? 
-                        _firebaseService.GetDownloadUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path) 
+                Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
+                        _firebaseService.GetDownloadUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
                         : String.Empty,
                 CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
                 Collection = f.Collection.CollectionName
-            }) ;           
+            });
 
             return Ok(response);
         }
 
 
         [HttpGet("furnitures/{id}")]
-        [AllowAnonymous] 
+        [AllowAnonymous]
         public async Task<IActionResult> GetFurnitureSpecificationById(int id)
         {
             var furnitureSpecifications = await _dbContext.FurnitureSpecifications.Where(fs => fs.FurnitureId == id).ToListAsync();
             if (furnitureSpecifications.Count == 0)
             {
                 return NotFound();
-            } 
+            }
             var responses = new List<object>();
             foreach (var fs in furnitureSpecifications)
             {
@@ -108,7 +111,8 @@ namespace OnlineShopping.Controllers
                     Wood = fs.Wood.WoodType,
                     Price = fs.Price,
                     Description = fs.Description,
-                    Available = fs.FurnitureRepositories.IsNullOrEmpty() ? 0 : fs.FurnitureRepositories.FirstOrDefault(f => f.FurnitureSpecificationId.Equals(fs.FurnitureSpecificationId)).Available,
+                    Available = _dbContext.FurnitureRepositories.FirstOrDefault(fr => fr.RepositoryId == 1 && fr.FurnitureSpecificationId == fs.FurnitureSpecificationId) == null ? 0 :
+                                _dbContext.FurnitureRepositories.FirstOrDefault(fr => fr.RepositoryId == 1 && fr.FurnitureSpecificationId == fs.FurnitureSpecificationId).Available,
                     Images = fs.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
                     {
                         AttachmentName = a.AttachmentName,
@@ -129,11 +133,11 @@ namespace OnlineShopping.Controllers
                 };
                 responses.Add(response);
             }
-            return Ok(responses);           
+            return Ok(responses);
         }
 
-        [HttpGet("furnitures/search")] 
-        [AllowAnonymous] 
+        [HttpGet("furnitures/search")]
+        [AllowAnonymous]
         public async Task<IActionResult> SearchFurnitureF(string keyword)
         {
             if (!keyword.IsNullOrEmpty()) keyword = keyword.ToUpper().Trim();
@@ -159,8 +163,8 @@ namespace OnlineShopping.Controllers
             });
             return Ok(response);
         }
-        
-        [HttpGet("furnitures/filter")] 
+
+        [HttpGet("furnitures/filter")]
         [AllowAnonymous]
         public async Task<IActionResult> FurnitureFilter([FromQuery] FurnitureFilterViewModel filter)
         {
@@ -191,8 +195,8 @@ namespace OnlineShopping.Controllers
             });
             return Ok(response);
         }
-                                                                
-                                                                                    //CART
+
+        //CART
         [HttpGet("cart")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> GetCart()
@@ -213,7 +217,7 @@ namespace OnlineShopping.Controllers
                 UnitPrice = cd.FurnitureSpecifition.Price,
                 Quantity = cd.Quantity,
                 Cost = cd.Quantity * cd.FurnitureSpecifition.Price
-            }); 
+            });
             return Ok(usercCart);
         }
 
@@ -223,39 +227,52 @@ namespace OnlineShopping.Controllers
         {
             if (furnitureSpecificationId == null || quantity == null) return BadRequest();
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
             var furnitureSpecification = await _dbContext.FurnitureSpecifications.FindAsync(furnitureSpecificationId);
             if (furnitureSpecification == null) return NotFound("The furniture not found");
-           
-            //kiem tra san pham da co trong gio hang chua
-            var cartDetailExist = await _dbContext.CartDetails.FirstOrDefaultAsync(cd => cd.CartId == loggedInUser.Cart.CartId
-                                           && cd.FurnitureSpecificationId.Equals(furnitureSpecificationId));
-            if (cartDetailExist != null)
+            try
             {
-                if (quantity != 0)
+                //kiem tra san pham da co trong gio hang chua
+                var cartDetailExist = loggedInUser.Cart.CartDetails.FirstOrDefault(cd => cd.FurnitureSpecificationId.Equals(furnitureSpecificationId));
+                if (cartDetailExist != null)
                 {
-                    cartDetailExist.Quantity += quantity;
-                    _dbContext.Update(cartDetailExist);
-                }             
-            }
-            else
-            {
-                if (quantity == 0)
-                {
-                    return BadRequest("Cannot add the furniture with zero quantity to cart");
+                    if (quantity != 0)
+                    {
+                        cartDetailExist.Quantity = quantity;
+                        _dbContext.Update(cartDetailExist);
+
+                    }
+                    else
+                    {
+                        _dbContext.Remove(cartDetailExist);
+                        await _dbContext.SaveChangesAsync();
+                        return Ok(new Response("Success", "Remove furniture from cart successfully"));
+                    }
                 }
-                var newCartDetail = new CartDetail()
-                {   CartId =   loggedInUser.Cart.CartId,                              
-                    FurnitureSpecificationId = furnitureSpecificationId,
-                    Quantity = quantity,                   
-                };
-                await _dbContext.AddAsync(newCartDetail);
-                loggedInUser.Cart.CartDetails.Add(newCartDetail);
+                else
+                {
+                    if (quantity == 0)
+                    {
+                        return BadRequest(new Response("Error", "Cannot add the furniture with zero quantity to cart"));
+                    }
+                    var newCartDetail = new CartDetail()
+                    {
+                        CartId = loggedInUser.Cart.CartId,
+                        FurnitureSpecificationId = furnitureSpecificationId,
+                        Quantity = quantity,
+                    };
+                    await _dbContext.AddAsync(newCartDetail);
+                    loggedInUser.Cart.CartDetails.Add(newCartDetail);
+                }
+                await _dbContext.SaveChangesAsync();
+                return Ok(new Response("Success", "Add the furniture to cart successfully"));
             }
-            await _dbContext.SaveChangesAsync();
-            return StatusCode(StatusCodes.Status200OK,
-                   new Response("Success", "Add the furniture to cart successfully"));
+            catch
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", "An error occurs when adding furniture to cart"));
+            }
+
         }
 
         [HttpDelete("cart/remove/{id}")]
@@ -273,23 +290,24 @@ namespace OnlineShopping.Controllers
                 _dbContext.Remove(deleteItem);
                 await _dbContext.SaveChangesAsync();
                 return Ok("Remove furniture from cart successfully");
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new Response("Error", "Remove furniture from cart failed"));
             }
         }
 
-      
-        
-       
-                                                                        //ANNOUNCEMENT
+
+
+
+        //ANNOUNCEMENT
         [HttpGet("announcements")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> GetAnnouncement()
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var user = await _userManager.FindByEmailAsync(email);
             var announcement = user.Announcements.OrderByDescending(a => a.CreationDate).Take(10).Select(a => new
             {
@@ -301,7 +319,7 @@ namespace OnlineShopping.Controllers
             return Ok(announcement);
         }
 
-                                                                              //WISHLIST
+        //WISHLIST
 
         [HttpGet("wish-list")]
         [Authorize(Roles = "CUSTOMER")]
@@ -310,7 +328,7 @@ namespace OnlineShopping.Controllers
 
 
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return Unauthorized(new Response("Error","Logged in user not found "));
+            if (email == null) return Unauthorized(new Response("Error", "Logged in user not found "));
             var loggedInUser = await _userManager.FindByEmailAsync(email);
 
             if (loggedInUser.WishList == null)
@@ -352,7 +370,7 @@ namespace OnlineShopping.Controllers
         [HttpPut("wish-list/toggle")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> ToggleWishlist(int furnitureId)
-        
+
         {
             if (furnitureId == null) return BadRequest();
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -386,278 +404,17 @@ namespace OnlineShopping.Controllers
                 return Ok("Add funiture to wishlist succefully");
             }
         }
-
-        //                                                                   //PHONE NUMBER
-        ////VIEW
-        //[HttpGet("customer-infor/phone-number")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult> GetCustomerPhoneNum()
-        //{
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    if (loggedInUser.PhoneNumber == null) return NotFound("User has no phonenumber added"); // user login via Google usually lack of phoneNum
-        //    var response = new
-        //    {
-        //        PhoneNumber = loggedInUser.PhoneNumber,
-        //        Confirm = loggedInUser.PhoneNumberConfirmed
-        //     };
-        //    return Ok(response);  
-        //}
-  
-        //[HttpGet("customer-infor/phone-number/get-otp")] 
-        //public async Task<IActionResult> SendOTPConfirmation(string phoneNums)
-        //{   var phoneExist = await _dbContext.Users.Where(u => u.PhoneNumber.Equals(phoneNums) && u.PhoneNumberConfirmed == true).ToListAsync();
-        //    if (phoneExist.Count > 0) return StatusCode(StatusCodes.Status406NotAcceptable, 
-        //        new Response("Error", "This phone number is already linked to another account"));
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    byte[] secretKey = Encoding.ASCII.GetBytes(phoneNums);
-        //    var otp = new Totp(secretKey, step: 300, totpSize: 6);
-        //    var totpCode = otp.ComputeTotp(DateTime.Now);
-        //    var sms = new Sms(new string[] { phoneNums }, $"The OTP to confirm your phone number: {totpCode}");
-        //    _smsService.SendSMS(sms);
-        //    return Ok($"The confirmation has sent to {phoneNums} successfully");
-        //}
-
-        ////ADD
-        //[HttpPost("customer-infor/phone-number/add")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult> AddPhoneNumber(string phoneNumber, string otp)
-        //{
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    var result = await _projectHelper.VerifyPhoneNum(phoneNumber, otp);
-        //    if (!result) return StatusCode(StatusCodes.Status406NotAcceptable,
-        //        new Response("Error", "The OTP is not correct"));
-        //    loggedInUser.PhoneNumber = phoneNumber;
-        //    loggedInUser.PhoneNumberConfirmed = true;
-        //    await _dbContext.AddAsync(loggedInUser);
-        //    await _dbContext.SaveChangesAsync();
-        //    return Accepted("Add phone number successfully");
-        //}
-
-        ////UPDATE
-        //[HttpPut("customer-infor/phone-number/update")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult> ChangeCustomerPhoneNum(string phoneNumber, string otp)
-        //{
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    var result = await _projectHelper.VerifyPhoneNum(phoneNumber, otp);
-        //    if (!result)
-        //    {
-        //        return StatusCode(StatusCodes.Status406NotAcceptable,
-        //            new Response("Error", "The OTP is incorrect"));
-        //    }
-        //    loggedInUser.PhoneNumber = phoneNumber;
-        //    loggedInUser.PhoneNumberConfirmed = true;
-        //    _dbContext.Update(loggedInUser);
-        //    await _dbContext.SaveChangesAsync();
-        //    return Accepted("Change phone number successfully");
-        //}
-
-        //                                                              //ADDRESS
-        ////VIEW
-        //[HttpGet("customer-infor/address")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult> GetCustomerAddress()
-        //{
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    var addressList = await _dbContext.UserAddresses.Where(a => a.UserId.Equals(loggedInUser.Id)).Select(a => new
-        //    {
-        //        Id = a.Address.AddressId,
-        //        Street = a.Address.Street,
-        //        Ward = a.Address.Ward,
-        //        District = a.Address.District,
-        //        Provine = a.Address.Provine,
-        //        AddressType = a.AddressType
-        //    }
-        //    ).ToListAsync();
-        //    if (addressList.Count == 0) return NotFound("User has no address added");
-        //    return Ok(addressList);
-        //}
-
-        ////CREATE
-        //[HttpPost("customer-infor/address/add")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult>AddCustomerAddress([FromForm] AddCustomerAddressViewModel userInput)
-        //{
-        //    if (userInput.Type.Equals("DEFAULT"))
-        //    {
-        //        var defaultAddress = await _dbContext.UserAddresses.FirstOrDefaultAsync(ua => ua.AddressType.Equals("DEFAULT"));
-        //        if (defaultAddress != null) return StatusCode(StatusCodes.Status406NotAcceptable,
-        //            new Response("Error", "Cannot set more than one default address"));
-        //    }
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    var newAddress = new Models.Address()
-        //    {
-        //        Street = userInput.Street,
-        //        Ward = userInput.Ward,
-        //        District = userInput.District,
-        //        Provine = userInput.Provine,
-        //        AddressOwner = "USER"
-        //    };
-        //    await _dbContext.AddAsync(newAddress);
-        //    await _dbContext.SaveChangesAsync();
-        //    var newUserAddress = new UserAddress()
-        //    {
-        //        AddressId = newAddress.AddressId,
-        //        UserId = loggedInUser.Id,
-        //        AddressType = userInput.Type.ToUpper()
-        //    };
-        //    await _dbContext.AddAsync(newUserAddress);
-        //    await _dbContext.SaveChangesAsync();
-        //    return Ok("Add address successfully");
-        //}
-        
-        ////UPDATE
-        //[HttpPut("customer-infor/address/update")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult> UpdateCustomerAddress([FromForm] EditCustomerAddressViewModel userInput)
-        //{
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    var currentAddress = await _dbContext.Addresses.FindAsync(userInput.AddressId);
-        //    if (currentAddress == null) return NotFound("This address is not exist");
-        //    var currentUserAddress = await _dbContext.UserAddresses.FirstOrDefaultAsync(ua => ua.AddressId == currentAddress.AddressId);
-        //    if (!userInput.Type.IsNullOrEmpty())
-        //    {
-        //        if (!currentUserAddress.AddressType.Equals("DEFAULT") && userInput.Type.Equals("DEFAULT")) return BadRequest("An user cannot have more than one default address");
-
-        //    }
-        //    currentAddress.Street = userInput.Street == null ? currentAddress.Street : userInput.Street;
-        //    currentAddress.Ward = userInput.Ward == null ? currentAddress.Ward : userInput.Ward;
-        //    currentAddress.District = userInput.District == null ? currentAddress.District : userInput.District; 
-        //    currentAddress.Provine = userInput.Provine == null ? currentAddress.Provine : userInput.Provine;
-        //    currentUserAddress.AddressType = userInput.Type == null ? currentUserAddress.AddressType : userInput.Type.ToUpper();
-        //    _dbContext.UpdateRange(currentUserAddress, currentAddress);
-        //    await _dbContext.SaveChangesAsync();
-        //    return Ok("Update address successfully");
-        //}
-        ////DELETE
-        //[HttpDelete("customer-infor/address/remove/{id}")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult> RemoveUserAddress([Required]int id)
-        //{
-        //    var currentAddress = await _dbContext.Addresses.FindAsync(id);
-        //    if (currentAddress == null) return NotFound("This address does not exist");
-        //    try
-        //    {
-        //        _dbContext.RemoveRange(currentAddress.UserAddresses.ToArray());
-        //        _dbContext.Remove(currentAddress);
-        //        await _dbContext.SaveChangesAsync();
-        //        return Ok("Remove the address successcully");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(StatusCodes.Status500InternalServerError,
-        //            new Response("Error", "The address remove failed"));
-        //    }
-
-        //}
-
-        //                                                                                             //BASIC USER INFORMATION
-        ////VIEW
-        //[HttpGet("customer-infor")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult> GetCustomerInfor()
-        //{
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    var respose = new
-        //    {
-        //        FirtName = loggedInUser.FirstName,
-        //        LastName = loggedInUser.LastName,
-        //        DoB = loggedInUser.DoB.Value,
-        //        Gender = loggedInUser.Gender,
-        //        Avatar = _firebaseService.GetDownloadUrl(loggedInUser.Avatar),
-        //        Spent = loggedInUser.Spent,
-        //        Debit = loggedInUser.Debit
-        //    };
-        //    return Ok(respose);
-        //}
-        ////UPDATE
-        //[HttpPut("customer-infor/update")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult> UpdateInfor([FromForm] EditInforViewModel userInput)
-        //{       
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    loggedInUser.FirstName = userInput.FirstName == null ? loggedInUser.FirstName : userInput.FirstName;
-        //    loggedInUser.LastName = userInput.LastName == null ? loggedInUser.LastName : userInput.LastName; ;
-        //    loggedInUser.DoB = userInput.DoB == null ? loggedInUser.DoB : userInput.DoB; ;
-        //    loggedInUser.Gender = userInput.Gender == null ? loggedInUser.Gender : userInput.Gender;
-        //    loggedInUser.LatestUpdate = DateTime.Now;
-            
-        //    if (userInput.Image != null)
-        //    {
-        //        bool isRemoved = true;
-        //        if (loggedInUser.Avatar != null) isRemoved = _firebaseService.RemoveFile(loggedInUser.Avatar);               
-        //        if (!isRemoved) return StatusCode(StatusCodes.Status500InternalServerError,
-        //            new Response("Error", "An error occurs when  uploading file"));
-        //        loggedInUser.Avatar = _firebaseService.UploadFile(userInput.Image);
-        //    }
-        //    try 
-        //    {
-        //        _dbContext.Update(loggedInUser);
-        //        await _dbContext.SaveChangesAsync();
-        //        return Ok("Update user information successfully");
-        //    }
-        //    catch
-        //    {
-        //        return StatusCode(StatusCodes.Status500InternalServerError,
-        //           new Response("Error", "An error occurs when updating user information"));
-        //    }
-                      
-        //}
-
-        ////2FA
-        //[HttpGet("customer-infor/2fa-status")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult> StatusTwoFactor()
-        //{
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    return Ok(loggedInUser.TwoFactorEnabled);
-        //}
-
-        ////TURN ON/OFF 2FA
-        //[HttpPut("customer-infor/toggle-2fa")]
-        //[Authorize(Roles = "CUSTOMER")]
-        //public async Task<IActionResult> ToggleTwoFactor()
-        //{
-        //    var email = User.FindFirstValue(ClaimTypes.Email);
-        //    if (email == null) return NotFound("Loggined user not found ");
-        //    var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-        //    loggedInUser.TwoFactorEnabled = !loggedInUser.TwoFactorEnabled;
-        //    _dbContext.Update(loggedInUser);
-        //    await _dbContext.SaveChangesAsync();
-        //    return Ok("Successfully");
-        //}
-
-        //NOW                                                                             //CHECKOUT
+        //CHECKOUT
         [HttpGet("checkout-now")]
-        [Authorize(Roles = "CUSTOMER")] 
+        [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> CheckoutNow([Required] string furnitureSpecificationId, [Required] int Quantity)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _userManager.FindByEmailAsync(email);
-            string  checkCustomerInfor = _projectHelper.CheckInforVerify(loggedInUser);
-            if (!checkCustomerInfor.IsNullOrEmpty()) return StatusCode(StatusCodes.Status405MethodNotAllowed,
-                new Response("Error", checkCustomerInfor));
+            string checkCustomerInfor = _projectHelper.CheckUserInfor(loggedInUser);
+            if (!checkCustomerInfor.IsNullOrEmpty()) return BadRequest(new Response("Error", checkCustomerInfor));
+
             var orderFurniture = await _dbContext.FurnitureSpecifications.FindAsync(furnitureSpecificationId);
             if (orderFurniture == null) return NotFound($"Furnitur specfication with id = {furnitureSpecificationId} is not exist");
             int available = orderFurniture.FurnitureRepositories == null ? 0 : orderFurniture.FurnitureRepositories.Sum(fr => fr.Available);
@@ -669,7 +426,6 @@ namespace OnlineShopping.Controllers
                 PaymentMethod = p.PaymentMethod
             }).ToListAsync();
             var deliveryAddress = loggedInUser.UserAddresses.FirstOrDefault(ua => ua.AddressType.Equals("DEFAULT"));
-            if (deliveryAddress == null) return NotFound(new Response("Error", "User must add address before check out"));
             var response = new
             {
                 DeliveryAddressId = deliveryAddress.AddressId,
@@ -688,15 +444,15 @@ namespace OnlineShopping.Controllers
         //VIA CART
         [HttpGet("checkout-via-cart")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> CheckoutViaCart([FromQuery] List<int> cartIdList)
+        public async Task<IActionResult> CheckoutViaCart([Required][FromQuery] List<int> cartIdList)
         {
             if (cartIdList.IsNullOrEmpty()) return BadRequest("cartId is required");
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-            //var checkCustomerInfor = CheckCustomerInfor(loggedInUser);
-            //if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
-            //    new Response() { Status = "Error", Message = checkCustomerInfor });
+            var checkCustomerInfor = _projectHelper.CheckUserInfor(loggedInUser);
+            if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
+                new Response("Error", checkCustomerInfor));
             var userCart = loggedInUser.Cart.CartDetails.ToList();
             var selectedItems = new List<CheckoutViewModel>();
             foreach (var id in cartIdList)
@@ -736,28 +492,30 @@ namespace OnlineShopping.Controllers
         //CUSTOMIZE FURNITURE
         [HttpGet("checkout-customize-furniture")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> CheckoutCustomizeFurniture([FromQuery] List<string> customizeFurnitureIdList)
+        public async Task<IActionResult> CheckoutCustomizeFurniture([Required][FromQuery] List<string> customizeFurnitureIdList)
         {
-            if (customizeFurnitureIdList.IsNullOrEmpty()) return BadRequest("cartId is required");
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-            if (_projectHelper.CheckUserAddress(loggedInUser)) return BadRequest(new Response("Error", "User must add address before order"));
+            string checkUserInfor = _projectHelper.CheckUserInfor(loggedInUser);
+            if (!checkUserInfor.IsNullOrEmpty()) return BadRequest(new Response("Error", checkUserInfor));
+
             var customizeFurnitureList = loggedInUser.CustomizeFurnitures.ToList();
             var selectedItems = new List<CustomizeFurnitureCheckout>();
             foreach (var id in customizeFurnitureIdList)
             {
                 CustomizeFurniture item = customizeFurnitureList.FirstOrDefault(i => i.CustomizeFurnitureId.Equals(id));
                 if (item == null) return NotFound($"The customize furniture with id = {id} does not exist in customize furniture list of user");
-                if (!item.Result.Status.Equals("Accepted")) return StatusCode(StatusCodes.Status406NotAcceptable, 
+                if (!item.Result.Status.Equals("Accepted")) return StatusCode(StatusCodes.Status406NotAcceptable,
                     new Response("Error", $"Cannot checkout customize furniture with \"{item.Result.Status}\" status"));
                 var data = new CustomizeFurnitureCheckout()
                 {
-                    
+
                     CustomizeFurnitureId = item.CustomizeFurnitureId,
                     CustomizeFurnitureName = item.CustomizeFurnitureName,
+                    UnitPrice = item.Result.ExpectedPrice.Value,
                     Quantity = item.Quantity,
-                    Cost = item.Result.ExpectedPrice.Value
+                    Cost = item.Result.ExpectedPrice.Value * item.Quantity
                 };
                 selectedItems.Add(data);
             };
@@ -778,22 +536,63 @@ namespace OnlineShopping.Controllers
             };
             return Ok(response);
         }
-                                                                                       
-                                                                                            //ORDER
+
+        //ORDER
         [HttpPost("order")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> Order([FromBody] OrderViewModel model)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-            //var checkCustomerInfor = CheckCustomerInfor(loggedInUser);
-            //if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
-            //    new Response() { Status = "Error", Message = checkCustomerInfor });
-            bool isCustomizeFurnitureOrder = model.Items.FirstOrDefault().ItemId.StartsWith("CF") ? true : false;
-            if (isCustomizeFurnitureOrder && model.PaymentId == 1) return BadRequest("Cash payment is not available for customize furniture order");
-            if (loggedInUser.Point < model.UsedPoint) return BadRequest("The total point is not enough");
+
+            if (loggedInUser.Point < model.UsedPoint) return BadRequest(new Response("Error", "The point of customer is less than the point input"));
+
+            var checkCustomerInfor = _projectHelper.CheckUserInfor(loggedInUser);
+            if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed, new Response("Error", checkCustomerInfor));
+
             var deliverAddress = await _dbContext.UserAddresses.FirstOrDefaultAsync(a => a.AddressId == model.AddressId && a.UserId.Equals(loggedInUser.Id));
+            if (deliverAddress == null) return BadRequest(new Response("Error", $"The address with id = {model.AddressId} is not exist in list of user address"));
+
+            var paymentMethod = await _dbContext.Payments.FindAsync(model.PaymentId);
+            if (paymentMethod == null) return BadRequest(new Response("Error", $"The payment with id = {model.PaymentId} does not exist"));
+
+
+            //define type of order
+            bool isCustomizeFurnitureOrder = model.Items.First().ItemId.StartsWith("CF") ? true : false;
+            if (isCustomizeFurnitureOrder && model.PaymentId == 1) return BadRequest("Cash payment is not available for custom furniture order");
+            var customFurnitureOrderList = new List<CustomizeFurniture>();
+            var furnitureOrderList = new List<FurnitureOrderItem>();
+            if (isCustomizeFurnitureOrder)
+            {
+                foreach (var item in model.Items)
+                {
+                    var customFurniture = await _dbContext.CustomizeFurnitures.FindAsync(item.ItemId);
+                    if (customFurniture == null) return BadRequest(new Response("Error", $"Custom furniture with id = {item.ItemId} was not found"));
+                    if (customFurniture.Result.Status.Equals("Pending")) return BadRequest(new Response("Error", $"Not allow to order custom furniture with id = {item.ItemId} in status \"Pending\""));
+                    customFurnitureOrderList.Add(customFurniture);
+                }
+            }
+            else
+            {
+                foreach (var item in model.Items)
+                {
+                    var furnitureSpecification = await _dbContext.FurnitureSpecifications.FindAsync(item.ItemId);
+                    if (furnitureSpecification == null) return BadRequest(new Response("Error", $"Furniture specification with id = {item.ItemId} was not found"));
+                    var furnitureRepository = furnitureSpecification.FurnitureRepositories.IsNullOrEmpty() ? null : furnitureSpecification.FurnitureRepositories.FirstOrDefault(fr => fr.RepositoryId == 1);
+                    int available = furnitureRepository == null ? 0 : furnitureRepository.Available;
+                    if (available == 0) return BadRequest($"Cannot order furniture with id = {furnitureSpecification.FurnitureId} because it is out of stock");
+                    if (available < item.Quantity) BadRequest($"Cannot order furniture with id = {furnitureSpecification.FurnitureId} because the order quantity is greater than available quantity");
+                    var newfurnitureOrderItem = new FurnitureOrderItem()
+                    {
+                        FurnitureSpecification = furnitureSpecification,
+                        FurnitureRepository = furnitureRepository,
+                        Quantity = item.Quantity
+                    };                  
+                    furnitureOrderList.Add(newfurnitureOrderItem);
+                }
+            }
+            //add new order
             var newOrder = new Order()
             {
                 CustomerId = loggedInUser.Id,
@@ -802,61 +601,73 @@ namespace OnlineShopping.Controllers
                 OrderDate = DateTime.Now,
                 DeliveryAddress = deliverAddress.Address.ToString(),
                 Note = model.Note == null ? "None" : model.Note,
-                Status = "Processing",
+                Status = "Pending",
                 IsPaid = false
             };
+          
             try
             {
                 await _dbContext.AddAsync(newOrder);
                 await _dbContext.SaveChangesAsync();
-            }
-            catch
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-              new Response("Error", "An error occurs when adding new order"));
-            }
-            
-            foreach (var item in model.Items)
-            {
-                
-                if (!isCustomizeFurnitureOrder)
+                _projectHelper.CreateAnnouncementAsync(loggedInUser, "Order successfully", "You have  ordered successfully, it will be delivered to you as soon as possible");
+                if (model.UsedPoint != 0)
                 {
-                   
-                    var furnitureExist  = await _dbContext.FurnitureSpecifications.FindAsync(item.ItemId);
-                    if (furnitureExist == null) return BadRequest($"The furniture with id = {item.ItemId} was not found");
-                    if (furnitureExist.FurnitureRepositories.IsNullOrEmpty() || furnitureExist.FurnitureRepositories.Sum(fr => fr.Available) == 0)
-                        return BadRequest($"Cannot order furniture with id = {furnitureExist.FurnitureId} because it is out of stock"); 
-                    var orderItem = new FurnitureOrderDetail()
-                    {
+                    _projectHelper.CreatePointHistoryAsync(loggedInUser, -1*model.UsedPoint, $"Use in order with id = {newOrder.OrderId}");
+                    loggedInUser.Point -= model.UsedPoint;
+                    _dbContext.Update(loggedInUser);
+                }
 
-                        OrderId = newOrder.OrderId,
-                        FurnitureSpecificationId = item.ItemId,
-                        Quantity = item.Quantity,
-                        Cost = Math.Round(furnitureExist.Price * item.Quantity, 2)
-                    };
-                    await _dbContext.AddAsync(orderItem);
+                if (isCustomizeFurnitureOrder)
+                {
+                    foreach (var item in customFurnitureOrderList)
+                    {
+                        var newOrderItem = new CustomizeFurnitureOrderDetail()
+                        {
+                            OrderId = newOrder.OrderId,
+                            CustomizeFunitureId = item.CustomizeFurnitureId,
+                            Quantity = item.Quantity,
+                            Cost = item.Result.ExpectedPrice.Value * item.Quantity
+                        };                       
+                        await _dbContext.AddAsync(newOrderItem);
+                    }
+                    await _dbContext.SaveChangesAsync();
+                    newOrder.TotalCost = model.Total / 2;
+                    _dbContext.Update(newOrder);
+                    await _dbContext.SaveChangesAsync();
+                    return Ok(_projectHelper.UrlPayment(newOrder.PaymentId, newOrder.OrderId));
                 }
                 else
                 {
-                    CustomizeFurniture customizeFurniture = await _dbContext.CustomizeFurnitures.FindAsync(item.ItemId);
-                    var orderItem = new CustomizeFurnitureOrderDetail()
+                    //add new order detail 
+                    foreach (var item in furnitureOrderList)
                     {
-                        OrderId = newOrder.OrderId,
-                        CustomizeFunitureId = item.ItemId,
-                        Quantity = customizeFurniture.Quantity,
-                        Cost = customizeFurniture.Result.ExpectedPrice.Value
-                    };
-                    await _dbContext.AddAsync(orderItem);
-                }              
+                        var newOrderItem = new FurnitureOrderDetail()
+                        {
+                            OrderId = newOrder.OrderId,
+                            FurnitureSpecificationId = item.FurnitureSpecification.FurnitureSpecificationId,
+                            Quantity = item.Quantity,
+                            Cost = item.FurnitureSpecification.Price * item.Quantity
+                        };
+                        //handle repository with furniture repository                      
+                        item.FurnitureRepository.Available -= item.Quantity;
+                        _dbContext.Update(item.FurnitureRepository);
+                        await _dbContext.AddAsync(newOrderItem);
+                    }
+                    await _dbContext.SaveChangesAsync();
+                    newOrder.TotalCost = model.Total;
+                    _dbContext.Update(newOrder);
+                    await _dbContext.SaveChangesAsync();
+                    if (newOrder.PaymentId != 1) return Ok(_projectHelper.UrlPayment(newOrder.PaymentId, newOrder.OrderId));
+                }
             }
-            await _dbContext.SaveChangesAsync();
-            newOrder.TotalCost = isCustomizeFurnitureOrder ? newOrder.CustomizeFurnitureOrderDetails.Sum(i => i.Cost) :
-                                                               newOrder.FurnitureOrderDetails.Sum(i => i.Cost);
-            _dbContext.Update(newOrder);
-            await _dbContext.SaveChangesAsync();
-            if (newOrder.PaymentId != 1 || isCustomizeFurnitureOrder) return Ok(_projectHelper.UrlPayment(newOrder.PaymentId, newOrder.OrderId));
+            catch
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", "An error occurs when processing order"));
+            }
             return Ok("Order successfully");
         }
+
+
 
         [HttpGet("vnpay-return")]
         public async Task<IActionResult> VNPayReturn()
@@ -887,43 +698,48 @@ namespace OnlineShopping.Controllers
                 String bankCode = vnpayData["vnp_BankCode"];
 
                 bool checkSignature = vnpay.ValidateSignature(vnp_SecureHash, vnp_HashSecret);
-                    if (checkSignature)
+                if (checkSignature)
+                {
+                    if (vnp_ResponseCode == "00" && vnp_TransactionStatus == "00")
                     {
-                        if (vnp_ResponseCode == "00" && vnp_TransactionStatus == "00")
+                        var order = await _dbContext.Orders.FindAsync(orderId);
+                        order.IsPaid = true;
+                        order.Status = "Preparing";
+                        order.Customer.Debit += order.TotalCost;
+                        order.Customer.Spent += order.TotalCost;
+                        if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty())
                         {
+                            order.TotalCost *= 2;
+                            order.IsPaid = false;
+                            order.Note += " (deposit has been paid)";
+                        }
 
-                            var order = await _dbContext.Orders.FindAsync(orderId);
-                            if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty()) order.Customer.Debit = order.TotalCost / 2;
-                            order.IsPaid = true;
-                            order.Status = "Preparing";
-                            _dbContext.UpdateRange(order, order.Customer);
-                            await _dbContext.SaveChangesAsync();
-                            return Ok($"Payment success OrderId={orderId}, VNPAY TranId={vnpayTranId}");
-                            
-                        }
-                        else
-                        {
-                        
-                            return StatusCode(StatusCodes.Status406NotAcceptable, 
-                                new Response("error", $"error payment OrderId={orderId}"));
-                            
-                        }
-                        
+                        _dbContext.UpdateRange(order, order.Customer);
+                        await _dbContext.SaveChangesAsync();
+                        return RedirectPermanent("http://localhost:8080/ProfileCusPage");
+                        //return Ok($"Payment success OrderId={orderId}, VNPAY TranId={vnpayTranId}");
                     }
                     else
                     {
-                        return BadRequest("An error occurred during processing");
-                    }
-                
 
+                        return StatusCode(StatusCodes.Status406NotAcceptable,
+                            new Response("error", $"error payment OrderId={orderId}"));
+
+                    }
+                }
+                else
+                {
+                    return BadRequest("An error occurred during processing");
+                }
             }
             return BadRequest("Return data not found");
         }
 
-        [HttpPut("cancel-order")] 
+        [HttpPut("cancel-order")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> CancelOrder(int orderId)
         {
+
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
@@ -932,16 +748,37 @@ namespace OnlineShopping.Controllers
             if (!order.Status.Equals("Preparing") && !order.Status.Equals("Pending")) return BadRequest($"Cannot cancel the order with \"{order.Status}\" status");
 
             //refund if user pays order via VNPAY
-            if (order.IsPaid && order.PaymentId != 1)
+            if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty() || order.IsPaid && order.PaymentId != 1)
             {
+                if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty())
+                {
+                    order.Customer.Debit -= order.TotalCost/2;
+                    order.Customer.Spent -= order.TotalCost/2;
+                }
+                if (order.IsPaid && order.PaymentId != 1)
+                {
+                    order.Customer.Spent -= order.TotalCost;
+                }
                 var result = _projectHelper.Refund(order);
                 if (!result) return StatusCode(StatusCodes.Status500InternalServerError,
                     new Response("Error", "An error occur during refund process"));
             }
+          
 
             //change status
             order.Status = "Canceled";
-            _dbContext.Update(order);
+            //restore quantity of available
+            if (!order.FurnitureOrderDetails.IsNullOrEmpty())
+            {
+                foreach (var orderItem in order.FurnitureOrderDetails)
+                {
+                    var furnitureRepository = await _dbContext.FurnitureRepositories.FirstOrDefaultAsync(fr => fr.RepositoryId == 1 && fr.FurnitureSpecificationId == orderItem.FurnitureSpecificationId);
+                    furnitureRepository.Available += orderItem.Quantity;
+                    _dbContext.Update(furnitureRepository);
+                }
+            }
+            await _projectHelper.CreateAnnouncementAsync(loggedInUser, "Success order cancelation", "Order cancellation is successful, payment fee will be refunded to your bank account if customer pays order via internet banking");
+            _dbContext.UpdateRange(order, order.Customer);
             await _dbContext.SaveChangesAsync();
             return Ok("Cancellation is successful, payment fee will be refunded to your bank account if customer pays order via internet banking");
         }
@@ -957,46 +794,63 @@ namespace OnlineShopping.Controllers
             if (status.Equals("All")) orderList = loggedInUser.Orders.ToList();
             else orderList = loggedInUser.Orders.Where(o => o.Status.Equals(status)).ToList();
             if (orderList.Count == 0) return NotFound($"There is no order in status: {status}");
-            
+
             var response = new List<object>();
             foreach (var order in orderList)
             {
                 if (order.TotalCost > 0)
                 {
-                    bool isValid = (order.Status.Equals("Processing") && order.Payment.PaymentId != 1 && DateTime.Now > order.OrderDate.AddMinutes(30)) ? false : true;
+                    bool isValid = (order.Status.Equals("Pending") && order.Payment.PaymentId != 1 && DateTime.Now > order.OrderDate.AddMinutes(30)) ? false : true;
                     if (!isValid)
                     {
                         order.Status = "Canceled";
                         _dbContext.Update(order);
                         await _dbContext.SaveChangesAsync();
                     }
-                    var furnitures = order.FurnitureOrderDetails.Select(o => new
+                    var furnitures = new object();
+                    if (!order.FurnitureOrderDetails.IsNullOrEmpty())
                     {
-                        FurnitureId = o.FurnitureSpecification.Furniture.FurnitureId,
-                        FurnitureName = o.FurnitureSpecification.Furniture.FurnitureName,
-                        FurnitureSpecificationId = o.FurnitureSpecification.FurnitureSpecificationId,
-                        FurnitureSpecificationname = o.FurnitureSpecification.FurnitureSpecificationName,
-                        Quantity = o.Quantity,
-                        Cost = o.Cost
-                    });
+                        furnitures = order.FurnitureOrderDetails.Select(o => new
+                        {
+                            FurnitureId = o.FurnitureSpecification.Furniture.FurnitureId,
+                            FurnitureName = o.FurnitureSpecification.Furniture.FurnitureName,
+                            FurnitureSpecificationId = o.FurnitureSpecification.FurnitureSpecificationId,
+                            FurnitureSpecificationname = o.FurnitureSpecification.FurnitureSpecificationName,
+                            Quantity = o.Quantity,
+                            Cost = o.Cost,
+                        });
+                    }
+                    else
+                    {
+                        furnitures = order.CustomizeFurnitureOrderDetails.Select(o => new
+                        {
+                            CustomFurniture = o.CustomizeFunitureId,
+                            CustomFurnitureName = o.CustomizeFurniture.CustomizeFurnitureName,
+                            Quantity = o.Quantity,
+                            Cost = o.Cost,
+                        });
+                    }
+
+
                     var data = new
                     {
                         OrderId = order.OrderId,
                         DeliveryAddress = order.DeliveryAddress,
                         Furniture = furnitures,
                         PaymentMethod = order.Payment.PaymentMethod,
-                        TotalCost = order.TotalCost,
+                        TotalCost = order.CustomizeFurnitureOrderDetails.IsNullOrEmpty() ? order.TotalCost : order.TotalCost * 2,
                         OrderDate = order.OrderDate,
-                        Status = order.Status
-
+                        Status = order.Status,
+                        Note = order.Note,
+                        IsPaid = order.IsPaid
                     };
                     response.Add(data);
-                }                
+                }
             }
             return Ok(response);
         }
 
-                                                                                                        //FEEDBACK
+        //FEEDBACK
         [HttpGet("feedbacks")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> GetUserFeedbacks()
@@ -1018,13 +872,13 @@ namespace OnlineShopping.Controllers
                 }) : null,
                 Content = fb.Content,
                 VoteStar = fb.VoteStar
-            });          
+            });
             return Ok(responses);
         }
 
         [HttpPost("create-feedback")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> CreationFeedback([FromForm] FeedbackViewModel model)
+        public async Task<IActionResult> CreateFeedback([FromForm] FeedbackViewModel model)
         {
             //validation
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -1036,14 +890,15 @@ namespace OnlineShopping.Controllers
             if (!order.Status.Equals("Delivered")) return StatusCode(StatusCodes.Status406NotAcceptable,
                 new Response("Error", "The order must be in \"Delivered\" status to give feedback"));
 
-            FurnitureSpecification specification = order.FurnitureOrderDetails.FirstOrDefault(fod => fod.FurnitureSpecificationId.Equals(model.FurnitureSpecificationId)).FurnitureSpecification;
-            if (specification == null) return NotFound($"The order does not contains furniture specification with id = {model.FurnitureSpecificationId}");
+            var furnitureOrderDetailExist = order.FurnitureOrderDetails.FirstOrDefault(fod => fod.FurnitureSpecificationId.Equals(model.FurnitureSpecificationId));
+            if (furnitureOrderDetailExist == null) return NotFound($"The order does not contains furniture specification with id = {model.FurnitureSpecificationId}");
+            var specification = furnitureOrderDetailExist.FurnitureSpecification;
             var specificationFeedbacks = specification.Feedbacks.ToList();
             if (specificationFeedbacks.FirstOrDefault(fb => fb.OrderId == order.OrderId) != null)
                 return StatusCode(StatusCodes.Status406NotAcceptable,
                new Response("Error", "This furniture has received feedback"));
 
-          
+
             //create new feedback 
             var newFeedback = new Feedback()
             {
@@ -1058,12 +913,13 @@ namespace OnlineShopping.Controllers
 
             //add point to customer point 
             loggedInUser.Point += 200;
-            PointHistory newPointHistory = new PointHistory()
-            {
-                CustomerId = loggedInUser.Id,
-                Description = $"Give feedback {specification.Furniture.FurnitureName} successfully +200 point",
-                History = DateTime.Now
-            };
+            _projectHelper.CreatePointHistoryAsync(loggedInUser, 200, $"Give feedback {specification.Furniture.FurnitureName} successfully");
+            //PointHistory newPointHistory = new PointHistory()
+            //{
+            //    CustomerId = loggedInUser.Id,
+            //    Description = $"Give feedback {specification.Furniture.FurnitureName} successfully +200 point",
+            //    History = DateTime.Now
+            //};
 
             //calculate average vote star of furniture and update 
             var feedbackList = await _dbContext.Feedbacks.Where(fb => fb.FurnitureSpecification.Furniture.FurnitureId == specification.Furniture.FurnitureId).ToListAsync();
@@ -1076,14 +932,12 @@ namespace OnlineShopping.Controllers
                 }
             }
             Furniture furniture = await _dbContext.Furnitures.FindAsync(specification.FurnitureId);
-            var averageStar = Math.Round(sumStar / (feedbackList.Count+1), 1);
+            var averageStar = Math.Round(sumStar / (feedbackList.Count + 1), 1);
             furniture.VoteStar = averageStar;
             try
             {
                 await _dbContext.AddAsync(newFeedback);
-                await _dbContext.AddAsync(newPointHistory);
                 _dbContext.Update(furniture);
-                _dbContext.Update(loggedInUser);
                 await _dbContext.SaveChangesAsync();
             }
             catch
@@ -1091,7 +945,7 @@ namespace OnlineShopping.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError,
               new Response("Error", "An error occur when creating feedback"));
             }
-           
+
 
             //upload image or video
             if (!model.files.IsNullOrEmpty())
@@ -1099,7 +953,7 @@ namespace OnlineShopping.Controllers
                 var addedFeedback = await _dbContext.Feedbacks.FirstOrDefaultAsync(fb => fb.OrderId == order.OrderId &&
                                            fb.FurnitureSpecificationId == specification.FurnitureSpecificationId);
                 foreach (var file in model.files)
-                {                  
+                {
                     var newFeedbackAttachment = new FeedbackAttachment()
                     {
                         FeedbackId = addedFeedback.FeedbackId,
@@ -1107,13 +961,13 @@ namespace OnlineShopping.Controllers
                         Path = _firebaseService.UploadFile(file),
                         Type = _firebaseService.ImageOrVideo(file)
                     };
-                    await _dbContext.AddAsync(newFeedbackAttachment);               
+                    await _dbContext.AddAsync(newFeedbackAttachment);
                 }
-               
-            }        
+
+            }
             try
             {
-                
+
                 await _dbContext.SaveChangesAsync();
                 return Ok("Create feedback successfully");
             }
@@ -1122,10 +976,91 @@ namespace OnlineShopping.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError,
                new Response("Error", "An error occur when uploading image "));
             }
-          
-        }
 
-                                                                            //CUSTOMIZE FURNITURE
+        }
+        [HttpPut("edit-feedback/{feedbackId}")]
+        public async Task<IActionResult> UpdateFeedback([FromRoute] int feedbackId, [FromForm] EditFeedbackViewModel model)
+        {
+            //validation
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            if (email == null) return NotFound(new Response("Error", "Logged in user not found"));
+            var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
+
+            Feedback feedbackExist = await _dbContext.Feedbacks.FindAsync(feedbackId);
+            if (feedbackExist == null) return NotFound(new Response("Error", $"The feedback with id = {feedbackExist} was not found"));
+
+            //edit new feedback 
+            feedbackExist.Content = _projectHelper.FilterBadWords(model.Content);
+            feedbackExist.VoteStar = model.VoteStar;
+            feedbackExist.Anonymous = model.Anonymous;
+            feedbackExist.CreationDate = DateTime.Now;
+
+
+            //calculate average vote star of furniture and update 
+            var feedbackList = await _dbContext.Feedbacks.Where(fb => fb.FurnitureSpecification.Furniture.FurnitureId == feedbackExist.FurnitureSpecification.Furniture.FurnitureId).ToListAsync();
+            double sumStar = feedbackExist.VoteStar;
+            if (feedbackList.Count > 0)
+            {
+                foreach (var feedback in feedbackList)
+                {
+                    sumStar += feedback.VoteStar;
+                }
+            }
+            Furniture furniture = await _dbContext.Furnitures.FindAsync(feedbackExist.FurnitureSpecification.FurnitureId);
+            var averageStar = Math.Round(sumStar / (feedbackList.Count + 1), 1);
+            furniture.VoteStar = averageStar;
+            try
+            {
+                _dbContext.UpdateRange(furniture, feedbackExist);
+                await _dbContext.SaveChangesAsync();
+            }
+            catch
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+              new Response("Error", "An error occur when creating feedback"));
+            }
+
+           
+            //upload image or video
+
+            if (!model.files.IsNullOrEmpty())
+            {
+                if (!feedbackExist.Attachements.IsNullOrEmpty()) 
+                {
+                    foreach (var attachment in feedbackExist.Attachements)
+                    {
+                        _firebaseService.RemoveFile(attachment.Path);
+                        _dbContext.Remove(attachment);
+                    }
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                foreach (var file in model.files)
+                {
+                    var newFeedbackAttachment = new FeedbackAttachment()
+                    {
+                        FeedbackId = feedbackExist.FeedbackId,
+                        AttachmentName = file.FileName,
+                        Path = _firebaseService.UploadFile(file),
+                        Type = _firebaseService.ImageOrVideo(file)
+                    };
+                    await _dbContext.AddAsync(newFeedbackAttachment);
+                }
+
+            }
+            try
+            {
+
+                await _dbContext.SaveChangesAsync();
+                return Ok(new Response("Success","Update feedback successfully"));
+            }
+            catch
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+               new Response("Error", "An error occur when uploading image "));
+            }
+        }
+        //CUSTOMIZE FURNITURE
 
         //GET
         [HttpGet("customize-furnitures")]
@@ -1139,50 +1074,49 @@ namespace OnlineShopping.Controllers
             if (status.Equals("All")) customizeFurnitures = loggedInUser.CustomizeFurnitures.ToList();
             else customizeFurnitures = loggedInUser.CustomizeFurnitures.Where(cf => cf.Result.Status.Equals(status)).ToList();
             if (customizeFurnitures.Count == 0) return NotFound($"There is no customize furniture with {status} status");
-            //try
-            //{
+            try
+            {
                 var response = customizeFurnitures.Select(cf => new
+            {
+                CustomizeFurnitureId = cf.CustomizeFurnitureId,
+                CustomerId = cf.CustomerId,
+                CustomizeFurnitureName = cf.CustomizeFurnitureName,
+                ColorId = cf.ColorId,
+                Color = cf.Color.ColorName,
+                Height = cf.Height,
+                Width = cf.Width,
+                Length = cf.Length,
+                WoodId = cf.WoodId,
+                Wood = cf.Wood.WoodType,
+                Quantity = cf.Quantity,
+                DesiredCompletionDate = cf.DesiredCompletionDate,
+                CreationDate = cf.CreationDate,
+                Images = cf.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
                 {
-                    CustomizeFurnitureId = cf.CustomizeFurnitureId,
-                    CustomerId = cf.CustomerId,
-                    CustomizeFurnitureName = cf.CustomizeFurnitureName,
-                    ColorId = cf.ColorId,
-                    Color = cf.Color.ColorName,
-                    Height = cf.Height,
-                    Width = cf.Width,
-                    Length = cf.Length,
-                    WoodId = cf.WoodId,
-                    Wood = cf.Wood.WoodType,
-                    Quantity = cf.Quantity,
-                    DesiredCompletionDate = cf.DesiredCompletionDate,
-                    CreationDate = cf.CreationDate,
-                    // Blabla = cf.Attachments.Count(),
-                    Images = cf.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
-                    {
-                        AttachmentName = a.AttachmentName,
-                        Path = _firebaseService.GetDownloadUrl(a.Path)
-                    }),
-                    Videos = cf.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
-                    {
-                        AttachmentName = a.AttachmentName,
-                        Path = _firebaseService.GetDownloadUrl(a.Path)
-                    }),
-                    Result = new
-                    {
-                        Status = cf.Result.Status,
-                        ExpectedPrice = cf.Result.ExpectedPrice,
-                        ActualCompletionDate = cf.Result.ActualCompletionDate,
-                        Reason = cf.Result.Reason
-                    }
+                    AttachmentName = a.AttachmentName,
+                    Path = _firebaseService.GetDownloadUrl(a.Path)
+                }),
+                Videos = cf.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
+                {
+                    AttachmentName = a.AttachmentName,
+                    Path = _firebaseService.GetDownloadUrl(a.Path)
+                }),
+                Result = new
+                {
+                    Status = cf.Result.Status,
+                    ExpectedPrice = cf.Result.ExpectedPrice,
+                    ActualCompletionDate = cf.Result.ActualCompletionDate,
+                    Reason = cf.Result.Reason
+                }
 
-                }).ToList();
-                return Ok(response);
-            //}
-            //catch (Exception ex)
-            //{
-            //    return StatusCode(StatusCodes.Status500InternalServerError,
-            //        new Response("Error", "An error occurs during fetch data"));
-            //}
+            }).ToList();
+            return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new Response("Error", "An error occurs during fetch data"));
+            }
 
         }
 
@@ -1201,7 +1135,7 @@ namespace OnlineShopping.Controllers
             // tao customize furniture de shop owner duyet
             var newCustomizeFurniture = new CustomizeFurniture()
             {
-                CustomizeFurnitureId = "CF-"+Guid.NewGuid().ToString().ToUpper(),
+                CustomizeFurnitureId = "CF-" + Guid.NewGuid().ToString().ToUpper(),
                 CustomerId = loggedInUser.Id,
                 CustomizeFurnitureName = userInput.CustomizeFurnitureName,
                 CategoryId = userInput.CategoryId,
@@ -1217,16 +1151,16 @@ namespace OnlineShopping.Controllers
             };
             await _dbContext.AddAsync(newCustomizeFurniture);
             await _dbContext.SaveChangesAsync();
-           
+
             var newResult = new Result()
             {
                 CustomizeFurnitureId = newCustomizeFurniture.CustomizeFurnitureId,
-                Status = "Processing"
+                Status = "Pending"
             };
             await _dbContext.AddAsync(newResult);
             await _dbContext.SaveChangesAsync();
             if (!userInput.Attachments.IsNullOrEmpty())
-            {           
+            {
                 foreach (var file in userInput.Attachments)
                 {
                     var newAttachment = new CustomizeFurnitureAttachment()
@@ -1257,18 +1191,18 @@ namespace OnlineShopping.Controllers
             if (!customizeFurniture.Result.Status.Equals("Pending")) return StatusCode(StatusCodes.Status406NotAcceptable,
                 new Response("Error", "The customize furniture can only be changed while in the pending status"));
 
-            customizeFurniture.CustomizeFurnitureName = userInput.CustomizeFurnitureName.IsNullOrEmpty()? customizeFurniture.CustomizeFurnitureName : userInput.CustomizeFurnitureName;     
-            customizeFurniture.ColorId = !userInput.ColorId.HasValue || userInput.ColorId.Value == 0  ? customizeFurniture.ColorId : userInput.ColorId.Value;
-            customizeFurniture.Height = !userInput.Height.HasValue || userInput.Height.Value == 0  ? customizeFurniture.Height : userInput.Height.Value;
-            customizeFurniture.Width = !userInput.Width.HasValue || userInput.Width.Value == 0  ? customizeFurniture.Width : userInput.Width.Value;
-            customizeFurniture.Length = !userInput.Length.HasValue || userInput.Length.Value == 0  ? customizeFurniture.Length : userInput.Length.Value;
-            customizeFurniture.WoodId = !userInput.WoodId.HasValue || userInput.WoodId.Value == 0  ? customizeFurniture.WoodId : userInput.WoodId.Value;
-            customizeFurniture.Quantity = !userInput.Quantity.HasValue || userInput.Quantity.Value == 0  ? customizeFurniture.Quantity : userInput.Quantity.Value;
-            customizeFurniture.DesiredCompletionDate = !userInput.DesiredCompletionDate.HasValue? customizeFurniture.DesiredCompletionDate : userInput.DesiredCompletionDate.Value;
+            customizeFurniture.CustomizeFurnitureName = userInput.CustomizeFurnitureName.IsNullOrEmpty() ? customizeFurniture.CustomizeFurnitureName : userInput.CustomizeFurnitureName;
+            customizeFurniture.ColorId = !userInput.ColorId.HasValue || userInput.ColorId.Value == 0 ? customizeFurniture.ColorId : userInput.ColorId.Value;
+            customizeFurniture.Height = !userInput.Height.HasValue || userInput.Height.Value == 0 ? customizeFurniture.Height : userInput.Height.Value;
+            customizeFurniture.Width = !userInput.Width.HasValue || userInput.Width.Value == 0 ? customizeFurniture.Width : userInput.Width.Value;
+            customizeFurniture.Length = !userInput.Length.HasValue || userInput.Length.Value == 0 ? customizeFurniture.Length : userInput.Length.Value;
+            customizeFurniture.WoodId = !userInput.WoodId.HasValue || userInput.WoodId.Value == 0 ? customizeFurniture.WoodId : userInput.WoodId.Value;
+            customizeFurniture.Quantity = !userInput.Quantity.HasValue || userInput.Quantity.Value == 0 ? customizeFurniture.Quantity : userInput.Quantity.Value;
+            customizeFurniture.DesiredCompletionDate = !userInput.DesiredCompletionDate.HasValue ? customizeFurniture.DesiredCompletionDate : userInput.DesiredCompletionDate.Value;
             _dbContext.Update(customizeFurniture);
             await _dbContext.SaveChangesAsync();
             if (!userInput.Attachments.IsNullOrEmpty())
-            {   
+            {
                 foreach (var attachment in customizeFurniture.Attachments)
                 {
                     bool removeResult = _firebaseService.RemoveFile(attachment.Path);
@@ -1277,10 +1211,10 @@ namespace OnlineShopping.Controllers
                 await _dbContext.SaveChangesAsync();
                 foreach (var file in userInput.Attachments)
                 {
-                   
+
                     var newAttachment = new CustomizeFurnitureAttachment()
                     {
-                        CustomizeFurnitureId  = customizeFurniture.CustomizeFurnitureId,
+                        CustomizeFurnitureId = customizeFurniture.CustomizeFurnitureId,
                         AttachmentName = file.FileName,
                         Path = _firebaseService.UploadFile(file),
                         Type = _firebaseService.ImageOrVideo(file)
@@ -1289,7 +1223,7 @@ namespace OnlineShopping.Controllers
                 }
                 await _dbContext.SaveChangesAsync();
             }
-            return Ok("Update customize furniture successfully"); 
+            return Ok("Update customize furniture successfully");
         }
 
         //DELETE
@@ -1326,7 +1260,7 @@ namespace OnlineShopping.Controllers
             }
         }
 
-                                                                                    //WARRANTY
+        //WARRANTY
 
         //GET
         [HttpGet("warranties")]
@@ -1346,20 +1280,20 @@ namespace OnlineShopping.Controllers
                 WarrantyId = w.WarrantyId,
                 OrderId = w.OrderId,
                 WarrantyReason = w.WarrantyReasons,
-                EstimatedTime = w.EstimatedTime.HasValue ? String.Format("{0:yyyy/MM/dd}",w.EstimatedTime) :  "Processing",
+                EstimatedTime = w.EstimatedTime.HasValue ? String.Format("{0:yyyy/MM/dd}", w.EstimatedTime) : "Processing",
                 Attacments = new
                 {
-                    Images = w.Attachments.Where(a => a.Type.Equals("Images")).Select(a => new
+                    Images = w.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
                     {
                         FileName = a.AttachmentName,
                         Path = _firebaseService.GetDownloadUrl(a.Path)
                     }),
-                    Videos = w.Attachments.Where(a => a.Type.Equals("Videos")).Select(a => new
+                    Videos = w.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
                     {
                         FileName = a.AttachmentName,
                         Path = _firebaseService.GetDownloadUrl(a.Path)
                     })
-                }, 
+                },
                 Status = w.Status
             }).ToList();
             return Ok(respones);
@@ -1376,7 +1310,7 @@ namespace OnlineShopping.Controllers
             var orderExist = loggedInUser.Orders.FirstOrDefault(w => w.OrderId == userInput.OrderId);
             if (orderExist == null) return NotFound($"The order witd id = {userInput.OrderId} does not exist in the ordered list of customer");
             if (!orderExist.Status.Equals("Delivered")) return BadRequest($"Not allow to create warranty when order is in {orderExist.Status} status");
-            
+
             Warranty newWarranty = new Warranty()
             {
                 UserId = loggedInUser.Id,
@@ -1388,17 +1322,18 @@ namespace OnlineShopping.Controllers
             {
                 await _dbContext.AddAsync(newWarranty);
                 await _dbContext.SaveChangesAsync();
-            } catch
+            }
+            catch
             {
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new Response("Error", "An error occur when creating new warranty"));
             }
-          
+
             if (!userInput.UploadFiles.IsNullOrEmpty())
-            {             
+            {
                 foreach (var file in userInput.UploadFiles)
                 {
-                    
+
                     var newAttachment = new WarrantyAttachment()
                     {
                         WarrantyId = newWarranty.WarrantyId,
@@ -1424,19 +1359,22 @@ namespace OnlineShopping.Controllers
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             var editWarranty = loggedInUser.Warranties.FirstOrDefault(w => w.WarrantyId == userInput.WarrantyId);
             if (editWarranty == null) return NotFound($"warranty claim with id = {userInput.WarrantyId} was not found in in the customer's warranty claim list");
-            
+
             editWarranty.WarrantyReasons = userInput.WarrantyReasons;
 
             _dbContext.Update(editWarranty);
             await _dbContext.SaveChangesAsync();
             if (!userInput.UploadFiles.IsNullOrEmpty())
             {
-                
-                foreach (var attachment in editWarranty.Attachments)
-                {                    
-                    if (_firebaseService.RemoveFile(attachment.Path))
-                    _dbContext.Remove(attachment);
-                };
+                if (!editWarranty.Attachments.IsNullOrEmpty())
+                {
+                    foreach (var attachment in editWarranty.Attachments)
+                    {
+                        var removeResult = _firebaseService.RemoveFile(attachment.Path);
+                        if (removeResult) _dbContext.Remove(attachment);
+                    };
+                }
+              
                 foreach (var file in userInput.UploadFiles)
                 {
                     var newAttachment = new WarrantyAttachment()
@@ -1453,11 +1391,11 @@ namespace OnlineShopping.Controllers
             return StatusCode(StatusCodes.Status201Created,
                 new Response("Success", "Edit warranty successfully"));
         }
-        
+
         //DELETE
         [HttpDelete("warranties/remove/{id}")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> RemoveWarranty([Required]int id)
+        public async Task<IActionResult> RemoveWarranty([Required] int id)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Loggined user not found ");
@@ -1467,8 +1405,15 @@ namespace OnlineShopping.Controllers
 
             try
             {
-                _dbContext.RemoveRange(removeWarranty.Attachments);
-                await _dbContext.SaveChangesAsync();
+                if (!removeWarranty.Attachments.IsNullOrEmpty())
+                {
+                    foreach (var attachment in removeWarranty.Attachments)
+                    {
+                        var removeResult = _firebaseService.RemoveFile(attachment.Path);
+                        _dbContext.Remove(attachment);
+                    };
+                    removeWarranty.Attachments.Clear();
+                }
                 _dbContext.Remove(removeWarranty);
                 await _dbContext.SaveChangesAsync();
                 return StatusCode(StatusCodes.Status204NoContent,
@@ -1480,6 +1425,6 @@ namespace OnlineShopping.Controllers
                    new Response("Error", "An error occurs when removing warranty claim"));
             }
 
-        }     
+        }
     }
 }

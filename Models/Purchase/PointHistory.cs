@@ -9,8 +9,8 @@ namespace OnlineShopping.Models.Purchase
         [Required]
         public string CustomerId { get; set; }
         [Required]
-        [StringLength(50, MinimumLength = 2,
-          ErrorMessage = "Description cannot be less than 2 characters or exceed 50 characters")]
+        [StringLength(500, MinimumLength = 2,
+          ErrorMessage = "Description cannot be less than 2 characters or exceed 500 characters")]
         public string Description { get; set; }
         public DateTime History { get; set; }
         //

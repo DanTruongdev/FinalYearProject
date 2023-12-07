@@ -14,12 +14,13 @@ namespace OnlineShopping.Libraries.Services
         public Task<bool> VerifyPhoneNum(string phoneNums, string totpCode);
         public JwtSecurityToken GenerateJWTToken(User user, IList<string> roles);
         public Task<bool> CreateUserInfor(string email);
-        public string CheckInforVerify(User customer);
+        public string CheckUserInfor(User user);
         public Task<bool> CreateLogAsync(string assistantId, string activity);
 
-        public Task<bool> CreateAnnouncementAsync(string assistantId, string title, string content);
-        public bool CheckUserAddress(User user);
+        public Task<bool> CreateAnnouncementAsync(User user, string title, string content);
         public string FilterBadWords(string input);
+        public Task<bool> UpdateCustomerSpentAsync(Order order);
 
+        public Task<bool> CreatePointHistoryAsync(User user,int point, string description);
     }
 }
