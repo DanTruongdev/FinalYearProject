@@ -147,7 +147,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> UpdateUserInfor([FromForm] EditInforViewModel userInput)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             loggedInUser.FirstName = userInput.FirstName == null ? loggedInUser.FirstName : userInput.FirstName;
             loggedInUser.LastName = userInput.LastName == null ? loggedInUser.LastName : userInput.LastName; ;
@@ -211,6 +211,7 @@ namespace OnlineShopping.Controllers
             }
 
         }
+
         //2FA
         //2fa {all}
         [HttpPut("individual/toggle-2fa")]
@@ -265,7 +266,7 @@ namespace OnlineShopping.Controllers
                 new Response("Error", "This phone number is already linked to another account"));
 
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound(new Response("Error", "Loggined user not found "));
+            if (email == null) return NotFound(new Response("Error", "Logged in user not found "));
             var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
 
             byte[] secretKey = Encoding.ASCII.GetBytes(phoneNums);

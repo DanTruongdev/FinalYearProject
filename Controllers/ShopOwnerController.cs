@@ -230,9 +230,8 @@ namespace OnlineShopping.Controllers
             supplierAddress.Ward = userInput.Ward;
             supplierAddress.District = userInput.District;
             supplierAddress.Provine = userInput.Provine;        
-
             supplierExist.SupplierName = userInput.SupplierName;
-            supplierExist.SupplierImage = _firebaseService.ImageOrVideo(userInput.SuplierImage);
+            supplierExist.SupplierImage = _firebaseService.UploadFile(userInput.SuplierImage);
             supplierExist.SupplierEmail = userInput.SuplierEmail;
             supplierExist.SupplierPhoneNums = userInput.SuplierPhoneNums;
 

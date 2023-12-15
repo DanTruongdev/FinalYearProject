@@ -16,8 +16,8 @@ namespace OnlineShopping.Data
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
-            this.ChangeTracker.AutoDetectChangesEnabled = true;
-            this.ChangeTracker.LazyLoadingEnabled = true;
+            ChangeTracker.AutoDetectChangesEnabled = true;
+            ChangeTracker.LazyLoadingEnabled = true;
         }
 
         public DbSet<User> Users { get; set; }
@@ -113,7 +113,7 @@ namespace OnlineShopping.Data
         {
             var hashed = new PasswordHasher<User>();
 
-            var customerTest = new Models.User
+            var customerTest = new User
             {
                 Id = "1",
                 FirstName = "Customer",
@@ -160,10 +160,10 @@ namespace OnlineShopping.Data
                 CreationDate = DateTime.Now,
                 IsActivated = true
             };
-           
+
             customerTest.PasswordHash = hashed.HashPassword(customerTest, "CustomerPass@1");
             assistantTest.PasswordHash = hashed.HashPassword(assistantTest, "AssistantPass@1");
-            managerTest.PasswordHash = hashed.HashPassword(managerTest, "ManagerPass@1");         
+            managerTest.PasswordHash = hashed.HashPassword(managerTest, "ManagerPass@1");
             builder.Entity<User>().HasData(customerTest, assistantTest, managerTest);
         }
         private void SeedRole(ModelBuilder builder)
@@ -171,7 +171,7 @@ namespace OnlineShopping.Data
             builder.Entity<IdentityRole>().HasData(
               new IdentityRole() { Id = "1", Name = "CUSTOMER", ConcurrencyStamp = "1", NormalizedName = "CUSTOMER" },
               new IdentityRole() { Id = "2", Name = "ASSISTANT", ConcurrencyStamp = "2", NormalizedName = "ASSISTANT" },
-              new IdentityRole() { Id = "3", Name = "SHOP_OWNER", ConcurrencyStamp = "3", NormalizedName = "SHOP_OWNER" }           
+              new IdentityRole() { Id = "3", Name = "SHOP_OWNER", ConcurrencyStamp = "3", NormalizedName = "SHOP_OWNER" }
             );
         }
         private void SeedUserRole(ModelBuilder builder)
@@ -179,7 +179,7 @@ namespace OnlineShopping.Data
             builder.Entity<IdentityUserRole<string>>().HasData(
               new IdentityUserRole<string>()
               {
-                 
+
                   UserId = "1",
                   RoleId = "1"
               },
@@ -239,7 +239,7 @@ namespace OnlineShopping.Data
         private void SeedCollection(ModelBuilder builder)
         {
             builder.Entity<Collection>()
-                .HasMany<Furniture>(c => c.Furnitures)
+                .HasMany(c => c.Furnitures)
                 .WithOne(f => f.Collection)
                 .HasForeignKey(f => f.CollectionId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
@@ -254,17 +254,17 @@ namespace OnlineShopping.Data
         private void SeedFurniture(ModelBuilder builder)
         {
             builder.Entity<Furniture>()
-                .HasOne<Category>(f => f.Category)
+                .HasOne(f => f.Category)
                 .WithMany(c => c.Furnitures)
                 .HasForeignKey(f => f.CategoryId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
             builder.Entity<Furniture>()
-                .HasOne<Label>(f => f.Label)
+                .HasOne(f => f.Label)
                 .WithMany(l => l.Furnitures)
                 .HasForeignKey(f => f.LabelId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
             builder.Entity<Furniture>()
-                .HasMany<FurnitureSpecification>(r => r.FurnitureSpecifications)
+                .HasMany(r => r.FurnitureSpecifications)
                 .WithOne(fs => fs.Furniture)
                 .HasForeignKey(fs => fs.FurnitureId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -299,24 +299,24 @@ namespace OnlineShopping.Data
         private void SeedFurnitureSpecification(ModelBuilder builder)
         {
             builder.Entity<FurnitureSpecification>()
-                .HasOne<Color>(fs => fs.Color)
+                .HasOne(fs => fs.Color)
                 .WithMany(c => c.FurnitureSpecifications)
                 .HasForeignKey(fs => fs.ColorId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
             builder.Entity<FurnitureSpecification>()
-               .HasOne<Wood>(fs => fs.Wood)
+               .HasOne(fs => fs.Wood)
                .WithMany(w => w.FurnitureSpecification)
                .HasForeignKey(fs => fs.WoodId)
                .OnDelete(DeleteBehavior.ClientSetNull);
             builder.Entity<FurnitureSpecification>()
-                .HasMany<FurnitureSpecificationAttachment>(fs => fs.Attachments)
+                .HasMany(fs => fs.Attachments)
                 .WithOne(fsa => fsa.FurnitureSpecification)
                 .HasForeignKey(fsa => fsa.FurnitureSpecificationId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<FurnitureSpecification>().HasData(
                 new FurnitureSpecification()
                 {
-                    FurnitureSpecificationId = "FS-"+Guid.NewGuid().ToString(),
+                    FurnitureSpecificationId = "FS-" + Guid.NewGuid().ToString(),
                     FurnitureSpecificationName = "Yellow",
                     FurnitureId = 1,
                     Height = 50,
@@ -329,7 +329,7 @@ namespace OnlineShopping.Data
                 },
                 new FurnitureSpecification()
                 {
-                    FurnitureSpecificationId = "FS-"+Guid.NewGuid().ToString(),
+                    FurnitureSpecificationId = "FS-" + Guid.NewGuid().ToString(),
                     FurnitureSpecificationName = "Red",
                     FurnitureId = 1,
                     Height = 60,
@@ -391,37 +391,37 @@ namespace OnlineShopping.Data
         private void SeedCustomizeFurniture(ModelBuilder builder)
         {
             builder.Entity<CustomizeFurniture>()
-                .HasMany<CustomizeFurnitureAttachment>(cf => cf.Attachments)
+                .HasMany(cf => cf.Attachments)
                 .WithOne(a => a.CustomizeFurniture)
                 .HasForeignKey(a => a.CustomizeFurnitureId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<CustomizeFurniture>()
-                .HasOne<Color>(cf => cf.Color)
+                .HasOne(cf => cf.Color)
                 .WithMany(c => c.CustomizeFurnitures)
                 .HasForeignKey(cf => cf.ColorId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
             builder.Entity<CustomizeFurniture>()
-                .HasOne<Wood>(cf => cf.Wood)
+                .HasOne(cf => cf.Wood)
                 .WithMany(w => w.CustomizeFurnitures)
                 .HasForeignKey(cf => cf.WoodId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
             builder.Entity<CustomizeFurniture>()
-                .HasOne<Category>(cf => cf.Category)
+                .HasOne(cf => cf.Category)
                 .WithMany(c => c.CustomizeFurnitures)
                 .HasForeignKey(cf => cf.WoodId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
             builder.Entity<CustomizeFurniture>()
-               .HasOne<User>(cf => cf.Customer)
+               .HasOne(cf => cf.Customer)
                .WithMany(u => u.CustomizeFurnitures)
                .HasForeignKey(cf => cf.CustomerId)
                .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<CustomizeFurniture>()
-               .HasMany<CustomizeFurnitureOrderDetail>(cf => cf.CustomizeFurnitureOrderDetails)
+               .HasMany(cf => cf.CustomizeFurnitureOrderDetails)
                .WithOne(c => c.CustomizeFurniture)
                .HasForeignKey(cf => cf.CustomizeFunitureId)
                .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<CustomizeFurniture>()
-                .HasOne<Result>(cf => cf.Result)
+                .HasOne(cf => cf.Result)
                 .WithOne(r => r.CustomizeFurniture)
                 .HasForeignKey<Result>(r => r.CustomizeFurnitureId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -450,7 +450,7 @@ namespace OnlineShopping.Data
         private void SeedCart(ModelBuilder builder)
         {
             builder.Entity<Cart>()
-                .HasOne<User>(c => c.Customer)
+                .HasOne(c => c.Customer)
                 .WithOne(u => u.Cart)
                 .HasForeignKey<Cart>(c => c.CustomerId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -459,12 +459,12 @@ namespace OnlineShopping.Data
         {
             builder.Entity<CartDetail>().HasKey(cd => cd.CartDetailId);
             builder.Entity<CartDetail>()
-                 .HasOne<FurnitureSpecification>(cd => cd.FurnitureSpecifition)
+                 .HasOne(cd => cd.FurnitureSpecifition)
                  .WithMany(fs => fs.CartDetails)
                  .HasForeignKey(cd => cd.FurnitureSpecificationId)
                  .OnDelete(DeleteBehavior.ClientSetNull);
             builder.Entity<CartDetail>()
-                .HasOne<Cart>(cd => cd.Cart)
+                .HasOne(cd => cd.Cart)
                 .WithMany(cd => cd.CartDetails)
                 .HasForeignKey(c => c.CartId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -472,17 +472,17 @@ namespace OnlineShopping.Data
         private void SeedOrder(ModelBuilder builder)
         {
             builder.Entity<Order>()
-                .HasOne<User>(or => or.Customer)
+                .HasOne(or => or.Customer)
                 .WithMany(u => u.Orders)
                 .HasForeignKey(or => or.CustomerId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<Order>()
-                .HasMany<FurnitureOrderDetail>(o => o.FurnitureOrderDetails)
+                .HasMany(o => o.FurnitureOrderDetails)
                 .WithOne(od => od.Order)
                 .HasForeignKey(o => o.OrderId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<Order>()
-                .HasOne<Payment>(o => o.Payment)
+                .HasOne(o => o.Payment)
                 .WithMany(p => p.Orders)
                 .HasForeignKey(o => o.PaymentId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
@@ -490,7 +490,7 @@ namespace OnlineShopping.Data
         private void SeedFurnitureOrderDetail(ModelBuilder builder)
         {
             builder.Entity<FurnitureOrderDetail>()
-                .HasOne<FurnitureSpecification>(fod => fod.FurnitureSpecification)
+                .HasOne(fod => fod.FurnitureSpecification)
                 .WithMany(f => f.FurnitureOrderDetails)
                 .HasForeignKey(fod => fod.FurnitureSpecificationId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
@@ -498,7 +498,7 @@ namespace OnlineShopping.Data
         private void SeedCustomizeFurnitureOrderDetail(ModelBuilder builder)
         {
             builder.Entity<CustomizeFurnitureOrderDetail>()
-                .HasOne<CustomizeFurniture>(cfod => cfod.CustomizeFurniture)
+                .HasOne(cfod => cfod.CustomizeFurniture)
                 .WithMany(cf => cf.CustomizeFurnitureOrderDetails)
                 .HasForeignKey(cfod => cfod.CustomizeFunitureId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -532,20 +532,20 @@ namespace OnlineShopping.Data
         private void SeedPoint(ModelBuilder builder)
         {
             builder.Entity<PointHistory>()
-                .HasOne<User>(p => p.User)
+                .HasOne(p => p.User)
                 .WithMany(u => u.PointHistories)
                 .HasForeignKey(p => p.CustomerId)
-                .OnDelete(DeleteBehavior.ClientCascade);          
+                .OnDelete(DeleteBehavior.ClientCascade);
         }
         private void SeedWishList(ModelBuilder builder)
         {
             builder.Entity<WishList>()
-                .HasOne<User>(wl => wl.Customer)
+                .HasOne(wl => wl.Customer)
                 .WithOne(u => u.WishList)
                 .HasForeignKey<WishList>(wl => wl.CustomerId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<WishList>()
-                .HasMany<WishListDetail>(wl => wl.WishListDetails)
+                .HasMany(wl => wl.WishListDetails)
                 .WithOne(wd => wd.WishList)
                 .HasForeignKey(wd => wd.WishListId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -553,7 +553,7 @@ namespace OnlineShopping.Data
         private void SeedWishListDetail(ModelBuilder builder)
         {
             builder.Entity<WishListDetail>()
-                .HasOne<Furniture>(wd => wd.Furniture)
+                .HasOne(wd => wd.Furniture)
                 .WithMany(f => f.WishListDetails)
                 .HasForeignKey(wd => wd.FurnitureId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -563,30 +563,30 @@ namespace OnlineShopping.Data
         {
             builder.Entity<FurnitureRepository>().HasKey(fr => new { fr.RepositoryId, fr.FurnitureSpecificationId });
             builder.Entity<FurnitureRepository>()
-                .HasOne<Repository>(fr => fr.Repository)
+                .HasOne(fr => fr.Repository)
                 .WithMany(r => r.FurnitureRepositories)
                 .HasForeignKey(fr => fr.RepositoryId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<FurnitureRepository>()
-                .HasOne<FurnitureSpecification>(fr => fr.FurnitureSpecification)
+                .HasOne(fr => fr.FurnitureSpecification)
                 .WithMany(fs => fs.FurnitureRepositories)
                 .HasForeignKey(fr => fr.FurnitureSpecificationId)
-                .OnDelete(DeleteBehavior.ClientCascade);          
+                .OnDelete(DeleteBehavior.ClientCascade);
         }
         private void SeedImport(ModelBuilder builder)
         {
             builder.Entity<Import>()
-                .HasOne<Repository>(i => i.Repository)
+                .HasOne(i => i.Repository)
                 .WithMany(r => r.Imports)
                 .HasForeignKey(i => i.RepositoryId)
                 .OnDelete(DeleteBehavior.ClientNoAction);
             builder.Entity<Import>()
-                .HasMany<ImportDetail>(i => i.ImportDetails)
+                .HasMany(i => i.ImportDetails)
                 .WithOne(id => id.Import)
                 .HasForeignKey(i => i.ImportId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<Import>()
-                .HasOne<User>(i => i.User)
+                .HasOne(i => i.User)
                 .WithMany(u => u.Imports)
                 .HasForeignKey(i => i.UserId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -594,7 +594,7 @@ namespace OnlineShopping.Data
         private void SeedImportDetail(ModelBuilder builder)
         {
             builder.Entity<ImportDetail>()
-                .HasOne<Material>(i => i.Material)
+                .HasOne(i => i.Material)
                 .WithMany(m => m.ImportDetails)
                 .HasForeignKey(i => i.MaterialId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -603,7 +603,7 @@ namespace OnlineShopping.Data
         {
 
             builder.Entity<Material>()
-                .HasOne<Supplier>(m => m.DefaultSuplier)
+                .HasOne(m => m.DefaultSuplier)
                 .WithMany(s => s.Materials)
                 .HasForeignKey(m => m.DefaultSuplierId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
@@ -639,12 +639,12 @@ namespace OnlineShopping.Data
         {
             builder.Entity<MaterialRepository>().HasKey(mr => new { mr.RepositoryId, mr.MaterialId });
             builder.Entity<MaterialRepository>()
-                .HasOne<Repository>(mr => mr.Repository)
+                .HasOne(mr => mr.Repository)
                 .WithMany(r => r.MaterialRepositories)
                 .HasForeignKey(mr => mr.RepositoryId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<MaterialRepository>()
-                .HasOne<Material>(mr => mr.Material)
+                .HasOne(mr => mr.Material)
                 .WithMany(m => m.MaterialRepositories)
                 .HasForeignKey(mr => mr.MaterialId)
                 .OnDelete(DeleteBehavior.ClientCascade); ;
@@ -669,7 +669,7 @@ namespace OnlineShopping.Data
         private void SeedRepository(ModelBuilder builder)
         {
             builder.Entity<Repository>()
-                .HasOne<Address>(r => r.Address)
+                .HasOne(r => r.Address)
                 .WithOne(a => a.Repository)
                 .HasForeignKey<Repository>(r => r.AddressId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
@@ -688,7 +688,7 @@ namespace OnlineShopping.Data
         private void SeedAddress(ModelBuilder builder)
         {
             builder.Entity<Address>()
-                .HasMany<UserAddress>(a => a.UserAddresses)
+                .HasMany(a => a.UserAddresses)
                 .WithOne(ua => ua.Address)
                 .HasForeignKey(ua => ua.AddressId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -727,7 +727,7 @@ namespace OnlineShopping.Data
         private void SeedAnnouncement(ModelBuilder builder)
         {
             builder.Entity<Announcement>()
-                .HasOne<User>(a => a.User)
+                .HasOne(a => a.User)
                 .WithMany(u => u.Announcements)
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.ClientCascade);
@@ -744,22 +744,22 @@ namespace OnlineShopping.Data
         private void SeedFeedback(ModelBuilder builder)
         {
             builder.Entity<Feedback>()
-                .HasOne<FurnitureSpecification>(f => f.FurnitureSpecification)
+                .HasOne(f => f.FurnitureSpecification)
                 .WithMany(fs => fs.Feedbacks)
                 .HasForeignKey(f => f.FurnitureSpecificationId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<Feedback>()
-                .HasOne<User>(f => f.Customer)
+                .HasOne(f => f.Customer)
                 .WithMany(u => u.Feedbacks)
                 .HasForeignKey(f => f.CustomerId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<Feedback>()
-                .HasMany<FeedbackAttachment>(f => f.Attachements)
+                .HasMany(f => f.Attachements)
                 .WithOne(fa => fa.Feedback)
                 .HasForeignKey(fa => fa.FeedbackId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<Feedback>()
-               .HasOne<Order>(f => f.Order)
+               .HasOne(f => f.Order)
                .WithMany(o => o.Feedbacks)
                .HasForeignKey(f => f.OrderId)
                .OnDelete(DeleteBehavior.ClientCascade);
@@ -768,7 +768,7 @@ namespace OnlineShopping.Data
         {
 
             builder.Entity<Supplier>()
-                .HasOne<Address>(s => s.Address)
+                .HasOne(s => s.Address)
                 .WithOne(a => a.Supplier)
                 .HasForeignKey<Supplier>(s => s.SupplierAddressId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
@@ -809,44 +809,44 @@ namespace OnlineShopping.Data
         private void SeedWarrantySchedule(ModelBuilder builder)
         {
             builder.Entity<Warranty>()
-                .HasOne<User>(ws => ws.User)
+                .HasOne(ws => ws.User)
                 .WithMany(u => u.Warranties)
                 .HasForeignKey(ws => ws.UserId)
                  .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<Warranty>()
-                .HasMany<WarrantyAttachment>(w => w.Attachments)
+                .HasMany(w => w.Attachments)
                 .WithOne(wa => wa.Warranty)
                 .HasForeignKey(wa => wa.WarrantyId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<Warranty>()
-                .HasOne<Order>(ws => ws.Order)
+                .HasOne(ws => ws.Order)
                 .WithMany(o => o.Warranties)
                 .HasForeignKey(ws => ws.OrderId)
                 .OnDelete(DeleteBehavior.ClientCascade);
         }
-        private void SeedLog(ModelBuilder builder) 
-        { 
+        private void SeedLog(ModelBuilder builder)
+        {
             builder.Entity<Log>()
-                .HasOne<User>(l => l.User)
+                .HasOne(l => l.User)
                 .WithMany(u => u.Logs)
                 .HasForeignKey(l => l.UserId)
                 .OnDelete(DeleteBehavior.ClientCascade);
-        
+
         }
         private void SeedFurnitureRepositoryHistory(ModelBuilder builder)
         {
             builder.Entity<FurnitureRepositoryHistory>()
-                .HasOne<User>(f => f.Assistant)
+                .HasOne(f => f.Assistant)
                 .WithMany(u => u.FurnitureRepositoryHistories)
                 .HasForeignKey(f => f.AssistantId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<FurnitureRepositoryHistory>()
-                .HasOne<Repository>(f => f.Repository)
+                .HasOne(f => f.Repository)
                 .WithMany(r => r.FurnitureRepositoryHistories)
                 .HasForeignKey(f => f.RepositoryId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<FurnitureRepositoryHistory>()
-               .HasOne<FurnitureSpecification>(f => f.FurnitureSpecification)
+               .HasOne(f => f.FurnitureSpecification)
                .WithMany(fs => fs.FurnitureRepositoryHistories)
                .HasForeignKey(f => f.FurnitureSpecificationId)
                .OnDelete(DeleteBehavior.ClientCascade);
@@ -854,17 +854,17 @@ namespace OnlineShopping.Data
         private void SeedMaterialRepositoryHistory(ModelBuilder builder)
         {
             builder.Entity<MaterialRepositoryHistory>()
-                 .HasOne<User>(m => m.Assistant)
+                 .HasOne(m => m.Assistant)
                  .WithMany(u => u.MaterialRepositoryHistories)
                  .HasForeignKey(f => f.AssistantId)
                  .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<MaterialRepositoryHistory>()
-                .HasOne<Repository>(m => m.Repository)
+                .HasOne(m => m.Repository)
                 .WithMany(r => r.MaterialRepositoryHistories)
                 .HasForeignKey(m => m.RepositoryId)
                 .OnDelete(DeleteBehavior.ClientCascade);
             builder.Entity<MaterialRepositoryHistory>()
-               .HasOne<Material>(m => m.Material)
+               .HasOne(m => m.Material)
                .WithMany(ma => ma.MaterialRepositoryHistories)
                .HasForeignKey(f => f.MaterialId)
                .OnDelete(DeleteBehavior.ClientCascade);

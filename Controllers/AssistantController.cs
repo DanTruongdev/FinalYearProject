@@ -44,13 +44,14 @@ namespace OnlineShopping.Controllers
         }
 
 
+       
 
-        //wood
 
-
-        [HttpGet("shop-data/woods")]
+            //wood
+            [HttpGet("shop-data/woods")]
         public async Task<IActionResult> GetWood()
         {
+
             var woods = await _dbContext.Woods.ToListAsync();
             if (woods.IsNullOrEmpty()) return NotFound("There is not any furniture category");
             var response = woods.Select(w => new
@@ -478,8 +479,8 @@ namespace OnlineShopping.Controllers
 
             if (!userInput.MaterialName.IsNullOrEmpty())
             {
-                Material materialNameExistName = await _dbContext.Materials.FirstOrDefaultAsync(m => m.MaterialName.ToUpper().Equals(userInput.MaterialName.Trim().ToUpper()));
-                if (materialNameExistName != null && materialNameExistName.MaterialName.Equals(materialExist.MaterialName)) return BadRequest(new Response("Error", "The material already exists"));
+                Material materialWithExistName = await _dbContext.Materials.FirstOrDefaultAsync(m => m.MaterialName.ToUpper().Equals(userInput.MaterialName.Trim().ToUpper()) && m.MaterialId != materialExist.MaterialId);
+                if (materialWithExistName != null) return BadRequest(new Response("Error", "The material already exists"));
             }
            
          
@@ -1595,7 +1596,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> GetPost([FromQuery]string? type)
         {
             if (type.IsNullOrEmpty()) type = "ALL";
-            else if (!type.Equals("TIP") || !type.Equals("NEW")) return BadRequest(new Response("Error", "Invalid post type. it must be \"TIP\" or \"NEW\""));
+            else if (!type.Equals("ALL") && !type.Equals("TIP") && !type.Equals("NEW")) return BadRequest(new Response("Error", "Invalid post type. it must be \"ALL\", \"TIP\" or \"NEW\""));
             var posts =  type.Equals("ALL")? await _dbContext.Posts.ToListAsync() : await _dbContext.Posts.Where(p => p.Type.Equals(type)).ToListAsync();
             if (posts.IsNullOrEmpty()) return Ok(new List<Post>());
             var response = posts.Select(p => new
@@ -1604,6 +1605,7 @@ namespace OnlineShopping.Controllers
                Author = p.Author.ToString(),
                PostTitle = p.Title,
                PosContent = p.Content,
+               PosType = p.Type,
                PostImage = _firebaseService.GetDownloadUrl(p.Image),
                CreationDate = p.CreationDate,
                LatestUpdate = p.LatestUpdate == null ? p.CreationDate : p.LatestUpdate
@@ -1624,7 +1626,7 @@ namespace OnlineShopping.Controllers
             {
                 AuthorId = loggedInUser.Id,
                 Title = userInput.Title,
-                Content = userInput.Title,
+                Content = userInput.Content,
                 Type = userInput.Type,
                 Image = _firebaseService.UploadFile(userInput.Image),
                 CreationDate = DateTime.Now,
@@ -1639,7 +1641,7 @@ namespace OnlineShopping.Controllers
                     PostId = newPost.PostId,
                     Author = newPost.Author.ToString(),
                     Title = newPost.Title,
-                    Content = newPost.Title,
+                    Content = newPost.Content,
                     Type = newPost.Type,
                     Image = _firebaseService.GetDownloadUrl(newPost.Image),
                     CreationDate = newPost.CreationDate,
@@ -1665,7 +1667,7 @@ namespace OnlineShopping.Controllers
             if (!userInput.Type.Equals("TIP") || !userInput.Type.Equals("NEW")) return BadRequest(new Response("Error", "Invalid post type. It must be \"TIP\" or \"NEW\""));
             
             postExist.Title = userInput.Title;
-            postExist.Content = userInput.Title;
+            postExist.Content = userInput.Content;
             postExist.Type = userInput.Type;
             postExist.Image = _firebaseService.UploadFile(userInput.Image);
             postExist.LatestUpdate = DateTime.Now;
@@ -1679,7 +1681,7 @@ namespace OnlineShopping.Controllers
                     PostId = postExist.PostId,
                     Author = postExist.Author.ToString(),
                     Title = postExist.Title,
-                    Content = postExist.Title,
+                    Content = postExist.Content,
                     Type = postExist.Type,
                     Image = _firebaseService.GetDownloadUrl(postExist.Image),
                     CreationDate = postExist.CreationDate,

@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using OnlineShopping.Data;
 using OnlineShopping.Libraries.Models;
 using OnlineShopping.Libraries.Services;
 using OnlineShopping.ViewModels;
@@ -20,9 +19,7 @@ using OnlineShopping.Models.Gallery;
 using Castle.Core.Internal;
 using OnlineShopping.ViewModels.Furniture;
 using OnlineShopping.ViewModels.Warranty;
-using System.Web.Http.Results;
-using Microsoft.EntityFrameworkCore.Internal;
-using OnlineShopping.Models.Warehouse;
+using OnlineShopping.Data;
 
 namespace OnlineShopping.Controllers
 {
@@ -53,13 +50,38 @@ namespace OnlineShopping.Controllers
             _projectHelper = projectHelper;
         }
 
-
+        [HttpGet("resetuser")]
+        [AllowAnonymous]
+        public async Task<IActionResult> abc()
+        {
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            if (email == null) return NotFound("Logged in user not found ");
+            var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
+            loggedInUser.Debit = 0;
+            loggedInUser.Spent = 0;
+            loggedInUser.Point = 0;
+            _dbContext.Update(loggedInUser);
+            await _dbContext.SaveChangesAsync();
+            return Ok();
+        }
 
         //FURNITURE
         [HttpGet("furnitures")]
         [AllowAnonymous]
         public async Task<IActionResult> GetAllFurniture()
         {
+            bool isLoggedIn = false;
+            bool isWishlistEmpty = false;
+            ICollection<WishListDetail> wishlist = new List<WishListDetail>();
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
+            if (loggedInUser != null) isLoggedIn = true;
+            if (isLoggedIn)
+            {
+                wishlist = loggedInUser.WishList.WishListDetails;
+                isWishlistEmpty = wishlist.IsNullOrEmpty() ? true : false;
+            }
+
             var furnitures = await _dbContext.Furnitures.ToListAsync();
             var response = furnitures.Select(f => new
             {
@@ -77,7 +99,8 @@ namespace OnlineShopping.Controllers
                         _firebaseService.GetDownloadUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
                         : String.Empty,
                 CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
-                Collection = f.Collection.CollectionName
+                Collection = f.Collection.CollectionName,
+                isLike = isLoggedIn && !isWishlistEmpty && wishlist.FirstOrDefault(w => w.FurnitureId == f.FurnitureId) != null ? true : false
             });
 
             return Ok(response);
@@ -420,11 +443,7 @@ namespace OnlineShopping.Controllers
             int available = orderFurniture.FurnitureRepositories == null ? 0 : orderFurniture.FurnitureRepositories.Sum(fr => fr.Available);
             if (available == 0) return StatusCode(StatusCodes.Status403Forbidden,
                 new Response("Error", "The furniture specification is out of stock"));
-            var paymentMethods = await _dbContext.Payments.Select(p => new
-            {
-                PaymentId = p.PaymentId,
-                PaymentMethod = p.PaymentMethod
-            }).ToListAsync();
+
             var deliveryAddress = loggedInUser.UserAddresses.FirstOrDefault(ua => ua.AddressType.Equals("DEFAULT"));
             var response = new
             {
@@ -436,7 +455,7 @@ namespace OnlineShopping.Controllers
                 FurnitureSpecificationName = orderFurniture.FurnitureSpecificationName,
                 FurnitureSpecificationImage = orderFurniture.Attachments.IsNullOrEmpty() ? "" : _firebaseService.GetDownloadUrl(orderFurniture.Attachments.First().Path),
                 Quantity = Quantity,
-                Payments = paymentMethods,
+
                 TotalCost = Math.Round(orderFurniture.Price * Quantity, 2)
             };
             return Ok(response);
@@ -471,11 +490,7 @@ namespace OnlineShopping.Controllers
                 };
                 selectedItems.Add(data);
             };
-            var paymentMethods = await _dbContext.Payments.Select(p => new
-            {
-                PaymentId = p.PaymentId,
-                PaymentMethod = p.PaymentMethod
-            }).ToListAsync();
+
             var deliveryAddress = loggedInUser.UserAddresses.FirstOrDefault(ua => ua.AddressType.Equals("DEFAULT"));
             var response = new
             {
@@ -483,7 +498,7 @@ namespace OnlineShopping.Controllers
                 DeliveryAddress = deliveryAddress.Address.ToString(),
                 items = selectedItems,
                 TotalCost = selectedItems.Sum(i => i.Cost),
-                Payments = paymentMethods
+
 
             };
             return Ok(response);
@@ -519,11 +534,7 @@ namespace OnlineShopping.Controllers
                 };
                 selectedItems.Add(data);
             };
-            var paymentMethods = await _dbContext.Payments.Select(p => new
-            {
-                PaymentId = p.PaymentId,
-                PaymentMethod = p.PaymentMethod
-            }).ToListAsync();
+
             var deliveryAddress = loggedInUser.UserAddresses.FirstOrDefault(ua => ua.AddressType.Equals("DEFAULT"));
             var response = new
             {
@@ -531,7 +542,7 @@ namespace OnlineShopping.Controllers
                 DeliveryAddress = deliveryAddress.Address.ToString(),
                 items = selectedItems,
                 TotalCost = selectedItems.Sum(i => i.Cost),
-                Payments = paymentMethods
+
 
             };
             return Ok(response);
@@ -588,7 +599,7 @@ namespace OnlineShopping.Controllers
                         FurnitureSpecification = furnitureSpecification,
                         FurnitureRepository = furnitureRepository,
                         Quantity = item.Quantity
-                    };                  
+                    };
                     furnitureOrderList.Add(newfurnitureOrderItem);
                 }
             }
@@ -604,15 +615,15 @@ namespace OnlineShopping.Controllers
                 Status = "Pending",
                 IsPaid = false
             };
-          
+
             try
             {
                 await _dbContext.AddAsync(newOrder);
                 await _dbContext.SaveChangesAsync();
-                _projectHelper.CreateAnnouncementAsync(loggedInUser, "Order successfully", "You have  ordered successfully, it will be delivered to you as soon as possible");
+                await _projectHelper.CreateAnnouncementAsync(loggedInUser, "Order successfully", "You have  ordered successfully, it will be delivered to you as soon as possible");
                 if (model.UsedPoint != 0)
                 {
-                    _projectHelper.CreatePointHistoryAsync(loggedInUser, -1*model.UsedPoint, $"Use in order with id = {newOrder.OrderId}");
+                    _projectHelper.CreatePointHistoryAsync(loggedInUser, -1 * model.UsedPoint, $"Use in order with id = {newOrder.OrderId}");
                     loggedInUser.Point -= model.UsedPoint;
                     _dbContext.Update(loggedInUser);
                 }
@@ -627,7 +638,7 @@ namespace OnlineShopping.Controllers
                             CustomizeFunitureId = item.CustomizeFurnitureId,
                             Quantity = item.Quantity,
                             Cost = item.Result.ExpectedPrice.Value * item.Quantity
-                        };                       
+                        };
                         await _dbContext.AddAsync(newOrderItem);
                     }
                     await _dbContext.SaveChangesAsync();
@@ -705,15 +716,14 @@ namespace OnlineShopping.Controllers
                         var order = await _dbContext.Orders.FindAsync(orderId);
                         order.IsPaid = true;
                         order.Status = "Preparing";
-                        order.Customer.Debit += order.TotalCost;
-                        order.Customer.Spent += order.TotalCost;
+                        order.Customer.Spent *= 2;
                         if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty())
                         {
-                            order.TotalCost *= 2;
+                            order.Customer.Debit += order.TotalCost;
+                            order.TotalCost += order.TotalCost;
                             order.IsPaid = false;
                             order.Note += " (deposit has been paid)";
                         }
-
                         _dbContext.UpdateRange(order, order.Customer);
                         await _dbContext.SaveChangesAsync();
                         return RedirectPermanent("http://localhost:8080/ProfileCusPage");
@@ -748,23 +758,27 @@ namespace OnlineShopping.Controllers
             if (!order.Status.Equals("Preparing") && !order.Status.Equals("Pending")) return BadRequest($"Cannot cancel the order with \"{order.Status}\" status");
 
             //refund if user pays order via VNPAY
-            if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty() || order.IsPaid && order.PaymentId != 1)
+            if (order.PaymentId != 1)
             {
                 if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty())
                 {
-                    order.Customer.Debit -= order.TotalCost/2;
-                    order.Customer.Spent -= order.TotalCost/2;
+                    order.Customer.Debit -= order.TotalCost / 2;
+                    order.Customer.Spent -= order.TotalCost / 2;
                 }
-                if (order.IsPaid && order.PaymentId != 1)
+
+                if (!order.FurnitureOrderDetails.IsNullOrEmpty())
                 {
-                    order.Customer.Spent -= order.TotalCost;
+                    if (order.IsPaid)
+                    {
+                        order.Customer.Spent -= order.TotalCost;
+                    }
+                    goto handle;
                 }
                 var result = _projectHelper.Refund(order);
                 if (!result) return StatusCode(StatusCodes.Status500InternalServerError,
                     new Response("Error", "An error occur during refund process"));
             }
-          
-
+        handle:
             //change status
             order.Status = "Canceled";
             //restore quantity of available
@@ -838,7 +852,7 @@ namespace OnlineShopping.Controllers
                         DeliveryAddress = order.DeliveryAddress,
                         Furniture = furnitures,
                         PaymentMethod = order.Payment.PaymentMethod,
-                        TotalCost = order.CustomizeFurnitureOrderDetails.IsNullOrEmpty() ? order.TotalCost : order.TotalCost * 2,
+                        TotalCost = order.CustomizeFurnitureOrderDetails.IsNullOrEmpty() ? order.TotalCost : order.TotalCost,
                         OrderDate = order.OrderDate,
                         Status = order.Status,
                         Note = order.Note,
@@ -1020,12 +1034,12 @@ namespace OnlineShopping.Controllers
               new Response("Error", "An error occur when creating feedback"));
             }
 
-           
+
             //upload image or video
 
             if (!model.files.IsNullOrEmpty())
             {
-                if (!feedbackExist.Attachements.IsNullOrEmpty()) 
+                if (!feedbackExist.Attachements.IsNullOrEmpty())
                 {
                     foreach (var attachment in feedbackExist.Attachements)
                     {
@@ -1052,7 +1066,7 @@ namespace OnlineShopping.Controllers
             {
 
                 await _dbContext.SaveChangesAsync();
-                return Ok(new Response("Success","Update feedback successfully"));
+                return Ok(new Response("Success", "Update feedback successfully"));
             }
             catch
             {
@@ -1062,13 +1076,14 @@ namespace OnlineShopping.Controllers
         }
         //CUSTOMIZE FURNITURE
 
+
         //GET
         [HttpGet("customize-furnitures")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> GetCustomizeFurniture(string status)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Loggined in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             List<CustomizeFurniture> customizeFurnitures = new List<CustomizeFurniture>();
             if (status.Equals("All")) customizeFurnitures = loggedInUser.CustomizeFurnitures.ToList();
@@ -1077,40 +1092,40 @@ namespace OnlineShopping.Controllers
             try
             {
                 var response = customizeFurnitures.Select(cf => new
-            {
-                CustomizeFurnitureId = cf.CustomizeFurnitureId,
-                CustomerId = cf.CustomerId,
-                CustomizeFurnitureName = cf.CustomizeFurnitureName,
-                ColorId = cf.ColorId,
-                Color = cf.Color.ColorName,
-                Height = cf.Height,
-                Width = cf.Width,
-                Length = cf.Length,
-                WoodId = cf.WoodId,
-                Wood = cf.Wood.WoodType,
-                Quantity = cf.Quantity,
-                DesiredCompletionDate = cf.DesiredCompletionDate,
-                CreationDate = cf.CreationDate,
-                Images = cf.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
                 {
-                    AttachmentName = a.AttachmentName,
-                    Path = _firebaseService.GetDownloadUrl(a.Path)
-                }),
-                Videos = cf.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
-                {
-                    AttachmentName = a.AttachmentName,
-                    Path = _firebaseService.GetDownloadUrl(a.Path)
-                }),
-                Result = new
-                {
-                    Status = cf.Result.Status,
-                    ExpectedPrice = cf.Result.ExpectedPrice,
-                    ActualCompletionDate = cf.Result.ActualCompletionDate,
-                    Reason = cf.Result.Reason
-                }
+                    CustomizeFurnitureId = cf.CustomizeFurnitureId,
+                    CustomerId = cf.CustomerId,
+                    CustomizeFurnitureName = cf.CustomizeFurnitureName,
+                    ColorId = cf.ColorId,
+                    Color = cf.Color.ColorName,
+                    Height = cf.Height,
+                    Width = cf.Width,
+                    Length = cf.Length,
+                    WoodId = cf.WoodId,
+                    Wood = cf.Wood.WoodType,
+                    Quantity = cf.Quantity,
+                    DesiredCompletionDate = cf.DesiredCompletionDate,
+                    CreationDate = cf.CreationDate,
+                    Images = cf.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
+                    {
+                        AttachmentName = a.AttachmentName,
+                        Path = _firebaseService.GetDownloadUrl(a.Path)
+                    }),
+                    Videos = cf.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
+                    {
+                        AttachmentName = a.AttachmentName,
+                        Path = _firebaseService.GetDownloadUrl(a.Path)
+                    }),
+                    Result = new
+                    {
+                        Status = cf.Result.Status,
+                        ExpectedPrice = cf.Result.ExpectedPrice,
+                        ActualCompletionDate = cf.Result.ActualCompletionDate,
+                        Reason = cf.Result.Reason
+                    }
 
-            }).ToList();
-            return Ok(response);
+                }).ToList();
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -1123,7 +1138,7 @@ namespace OnlineShopping.Controllers
         //CREATE
         [HttpPost("customize-furnitures/create")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> CreateCustomizeFurniture([FromForm] CustomizeFurnitureViewModel userInput)
+        public async Task<IActionResult> CreateCustomizeFurniture([FromBody] CustomizeFurnitureViewModel userInput)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Loggined user not found ");
@@ -1374,7 +1389,7 @@ namespace OnlineShopping.Controllers
                         if (removeResult) _dbContext.Remove(attachment);
                     };
                 }
-              
+
                 foreach (var file in userInput.UploadFiles)
                 {
                     var newAttachment = new WarrantyAttachment()
