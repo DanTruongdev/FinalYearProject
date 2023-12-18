@@ -1,16 +1,13 @@
-﻿using Bogus;
-using Bogus.DataSets;
-using Castle.Core.Internal;
+﻿using Castle.Core.Internal;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using OnlineShopping.Data;
 using OnlineShopping.Libraries.Services;
 using OnlineShopping.Models;
-using OnlineShopping.Models.Funiture;
-using OnlineShopping.Models.Warehouse;
 using OnlineShopping.ViewModels.Dashboard;
+using System.Data;
 
 namespace OnlineShopping.Controllers
 {
@@ -22,8 +19,7 @@ namespace OnlineShopping.Controllers
 
 
         private readonly ApplicationDbContext _dbContext;
-        private readonly UserManager<User> _userManager;    
-        private readonly IProjectHelper _projectHelper;     
+        private readonly UserManager<User> _userManager;        
         private int currentMonth = DateTime.Now.Month;
         private int currentYear = DateTime.Now.Year;
 
@@ -31,12 +27,13 @@ namespace OnlineShopping.Controllers
         {
             _dbContext = dbContext;
             _userManager = userManager;
-            _projectHelper = projectHelper;
+     
         }
 
 
 
         //Assistant dashboard
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("assistant/statics")]
         public async Task<IActionResult>AssistantDashboardStatics()
         {
@@ -56,7 +53,8 @@ namespace OnlineShopping.Controllers
             };
             return Ok(response);
         }
-
+       
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("assistant/charts")]
         public async Task<IActionResult> AssistantDashboardChart()
         {
@@ -143,6 +141,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpGet("shop-owner/statics")]
+        [Authorize(Roles = "SHOP_OWNER")]
         public async Task<IActionResult> ShopOwnerDashboardStatics()
         {          
             var orders = _dbContext.Orders;
@@ -168,6 +167,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpGet("shop-owner/charts")]
+        [Authorize(Roles = "SHOP_OWNER")]
         public async Task<IActionResult> ShopOwnerDashboardCharts()
         {
             var spentInYear = new List<double>();
@@ -270,6 +270,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpGet("shop-owner/tables")]
+        [Authorize(Roles = "SHOP_OWNER")]
         public async Task<IActionResult> ShopOwnerDashboardTables()
         {
             var topSaleFurniture = new List<DashboardData<int>>();

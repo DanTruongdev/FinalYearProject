@@ -1,4 +1,5 @@
 ﻿using Castle.Core.Internal;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -47,7 +48,50 @@ namespace OnlineShopping.Controllers
 
 
         //Customer request
+        [Authorize(Roles = "SHOP_OWNER")]
+        [HttpGet("customer-requests/customize-furniture/search")]
+        public async Task<IActionResult> SearchCustomFurniture(string? searchString)
+        {
+            var data = new List<CustomizeFurniture>();
+            if (!searchString.IsNullOrEmpty()) { 
+                data = await _dbContext.CustomizeFurnitures.Where(r => r.CustomizeFurnitureName.ToUpper().Contains(searchString.ToUpper())).ToListAsync();
+                if (data.IsNullOrEmpty()) return Ok(data);
+            }
+            else
+            {
+                data = await _dbContext.CustomizeFurnitures.ToListAsync();
+            }
+          
+            var response = data.Select(cf => new
+            {
+                CustomizeFurnitureId = cf.CustomizeFurnitureId,
+                CustomerId = cf.CustomerId,
+                CustomerName = cf.Customer.ToString(),
+                CustomizeFurnitureName = cf.CustomizeFurnitureName,
+                ColorId = cf.ColorId,
+                Height = cf.Height,
+                Width = cf.Width,
+                Length = cf.Length,
+                WoodId = cf.WoodId,
+                Quantity = cf.Quantity,
+                DesiredCompletionDate = cf.DesiredCompletionDate,
+                CreationDate = cf.CreationDate,
+                Images = cf.Attachments.Where(a => a.Type.Equals("Images")).Select(a => new
+                {
+                    AttachmentName = a.AttachmentName,
+                    Path = _firebaseService.GetDownloadUrl(a.Path)
+                }),
+                Videos = cf.Attachments.Where(a => a.Type.Equals("Videos")).Select(a => new
+                {
+                    AttachmentName = a.AttachmentName,
+                    Path = _firebaseService.GetDownloadUrl(a.Path)
+                }),
+                Status = cf.Result.Status
+            });
+            return Ok(response);
+        }
 
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpGet("customer-requests/customize-furniture")]
         public async Task<IActionResult> GetCustomizeFurnitureRequest(string status)
         {
@@ -61,6 +105,7 @@ namespace OnlineShopping.Controllers
                 {
                     CustomizeFurnitureId = cf.CustomizeFurnitureId,
                     CustomerId = cf.CustomerId,
+                    CustomerName = cf.Customer.ToString(),
                     CustomizeFurnitureName = cf.CustomizeFurnitureName,
                     ColorId = cf.ColorId,
                     Height = cf.Height,
@@ -89,7 +134,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs during fetch data"));
             }
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPut("customize-requests/customize-furniture/confirm")]
         public async Task<IActionResult> ConfirmCustomizeFurnitureRequest([FromForm] ResultViewModel userInput)
         {
@@ -120,8 +165,9 @@ namespace OnlineShopping.Controllers
         }
 
         //CRUD supplier
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpGet("shop-data/suppliers/search")]
-        public async Task<IActionResult> SearchRepositories(string searchString)
+        public async Task<IActionResult> SearchSuppliers(string searchString)
         {
             var supliers = await _dbContext.Supliers.Where(r => r.SupplierName.Contains(searchString)).ToListAsync();
             if (supliers.IsNullOrEmpty()) return Ok(new List<Supplier>());
@@ -136,7 +182,7 @@ namespace OnlineShopping.Controllers
             }) ;
             return Ok(response);
         }
-
+    
         [HttpGet("shop-data/suppliers")]
         public async Task<IActionResult> GetSupplier()
         {
@@ -158,7 +204,7 @@ namespace OnlineShopping.Controllers
             });
             return Ok(response);
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPost("shop-data/suppliers/add")]
         public async Task<IActionResult> AddSupplier([FromForm] SupplierViewModel userInput)
         {
@@ -218,7 +264,7 @@ namespace OnlineShopping.Controllers
             }
            
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPut("shop-data/suppliers/{supplierId}/edit")]
         public async Task<IActionResult> EditSupplier([FromRoute] int supplierId, [FromForm] SupplierViewModel userInput)
         {
@@ -248,7 +294,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", $"An error occurs when updating supplier with id = {supplierId}"));
             }                     
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpDelete("shop-data/suppliers/{supplierId}/remove")]
         public async Task<IActionResult> RemoveSupplier([FromRoute] int supplierId)
         {
@@ -270,23 +316,14 @@ namespace OnlineShopping.Controllers
             }
         }
 
-
-
-
-
-
-
-
-
-
         //export account csv ==> view in user controller
-        
+
 
 
         //furniture/furniture specification, category, collection
-        
+
         //view all and search furniture, furniture specification function redirects to customer controller
-        
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPost("shop-data/furnitures/add")]
         public async Task<IActionResult> AddFurniture([FromForm] AddFurnitureViewModel userInput)
         {
@@ -327,7 +364,7 @@ namespace OnlineShopping.Controllers
             }
 
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPost("shop-data/furnitures/{furnitureId}/add")]
         public async Task<IActionResult> AddFurniturueSpecification([FromRoute] int furnitureId, [FromForm] AddFurnitureSpecificationViewModel userInput)
         {
@@ -404,7 +441,7 @@ namespace OnlineShopping.Controllers
             }
         }
 
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPut("shop-data/furnitures/edit")]
         public async Task<IActionResult> UpdateFurniturue([FromForm] EditFurnitureViewModel userInput)
         {
@@ -447,7 +484,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", $"An error occurs when updating furniture with id = {userInput.FurnitureId}"));
             }
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPut("shop-data/furnitures/{furnitureId}/edit")]
         public async Task<IActionResult> UpdateFurniturueSpecification([FromRoute] int furnitureId, [FromForm] EditFurnitureSpecificationViewModel userInput)
         {
@@ -507,7 +544,7 @@ namespace OnlineShopping.Controllers
             }
 
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpDelete("shop-data/furnitures/delete/{furnitureId}")]
         public async Task<IActionResult> RemoveFurniture(int furnitureId)
         {
@@ -521,7 +558,7 @@ namespace OnlineShopping.Controllers
             await _dbContext.SaveChangesAsync();
             return NoContent();
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpDelete("shop-data/furnitures/{furnitureId}/delete/{furnitureSpecificationId}")]
         public async Task<IActionResult> RemoveFurnitureSpecification(int furnitureId, string furnitureSpecificationId)
         {
@@ -558,8 +595,9 @@ namespace OnlineShopping.Controllers
             }
         }
 
-        
+
         //collection
+        
         [HttpGet("shop-data/collections")]
         public async Task<IActionResult> GetCollection()
         {
@@ -572,7 +610,7 @@ namespace OnlineShopping.Controllers
             }).ToList();
             return Ok(response);
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPost("shop-data/collections/add")]
         public async Task<IActionResult> AddCollection([Required] string collectionName)
         {
@@ -598,7 +636,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when creating new collection"));
             }
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPut("shop-data/collections/update")]
         public async Task<IActionResult> EditCollection([Required] int collectionId, [Required] string collectionName)
         {
@@ -623,7 +661,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when updating collection"));
             }
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpDelete("shop-data/collections/remove/{id}")]
         public async Task<IActionResult> RemoveCollection([Required] int id)
         {
@@ -648,7 +686,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when remove collection"));
             }
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpGet("shop-data/collections/search")]
         public async Task<IActionResult> SearchCollection(string? searchString)
         {
@@ -667,7 +705,7 @@ namespace OnlineShopping.Controllers
 
 
         //Category                                       
-
+    
         [HttpGet("shop-data/categories")]
         public async Task<IActionResult> GetCategory()
         {
@@ -680,7 +718,7 @@ namespace OnlineShopping.Controllers
             }).ToList();
             return Ok(response);
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPost("shop-data/categories/add")]
         public async Task<IActionResult> AddCategory([Required] string categoryName)
         {
@@ -703,7 +741,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when creating new category"));
             }
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPut("shop-data/categories/update")]
         public async Task<IActionResult> EditCategory([Required] int categoryId, [Required] string categoryName)
         {
@@ -726,7 +764,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when updating category" ));
             }
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpDelete("shop-data/categories/remove/{id}")]
         public async Task<IActionResult> RemoveCategory([Required] int id)
         {
@@ -751,7 +789,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when remove category"));
             }
         }
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpGet("shop-data/categories/search")]
         public async Task<IActionResult> SeachCategory(string? searchString)
         {
@@ -768,16 +806,17 @@ namespace OnlineShopping.Controllers
         }
 
         //view customer order
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpGet("customer-requests/orders")]
         public async Task<IActionResult> GetAllOrders()
         {
             return RedirectToAction("GetAllOrder", "Assistant");
         }
 
-        
+
         //add account in authentication controller
 
-
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpPut("accounts/disable")]
         public async Task<IActionResult> ToggleAccountStatus(string userId)
         { 

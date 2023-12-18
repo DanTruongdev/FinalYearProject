@@ -45,6 +45,7 @@ namespace OnlineShopping.Controllers
 
         //ADD account in authentication controller
         //Search
+        [Authorize(Roles = "SHOP_OWNER")]
         [HttpGet("search")]
         public async Task<IActionResult> SearchUser(string searchString)
         {
@@ -78,6 +79,7 @@ namespace OnlineShopping.Controllers
 
         //View all {shop-owner}
         [HttpGet("all")]
+        [Authorize(Roles = "SHOP_OWNER")]
         public async Task<IActionResult> GetAllUser([FromQuery] string? roleId)
         {
             string userRole = "ALL";
@@ -112,6 +114,7 @@ namespace OnlineShopping.Controllers
 
         //detail {all}
         [HttpGet("detail")]
+        [Authorize(Roles = "CUSTOMER,ASSISTANT,SHOP_OWNER")]
         public async Task<IActionResult> GetUserDetail()
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -143,6 +146,7 @@ namespace OnlineShopping.Controllers
         }
 
         //update one {all}
+        [Authorize(Roles = "CUSTOMER,ASSISTANT,SHOP_OWNER")]
         [HttpPut("individual/update")]
         public async Task<IActionResult> UpdateUserInfor([FromForm] EditInforViewModel userInput)
         {
@@ -180,6 +184,7 @@ namespace OnlineShopping.Controllers
 
         //Update all {shop owner}
         [HttpPut("all/update")]
+        [Authorize(Roles = "SHOP_OWNER")]
         public async Task<IActionResult> UpdateAllUserInfor([FromForm] EditAllInforViewModel userInput)
         {
             User userExist = await _userManager.FindByIdAsync(userInput.UserId);
@@ -215,7 +220,7 @@ namespace OnlineShopping.Controllers
         //2FA
         //2fa {all}
         [HttpPut("individual/toggle-2fa")]
-
+        [Authorize(Roles = "CUSTOMER,ASSISTANT,SHOP_OWNER")]
         public async Task<IActionResult> ToggleUserTwoFactor()
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -237,7 +242,7 @@ namespace OnlineShopping.Controllers
 
         //2fa {shop owner}
         [HttpPut("all/toggle-2fa")]
-
+        [Authorize(Roles = "SHOP_OWNER")]
         public async Task<IActionResult> ToggleAllUserTwoFactor([Required] string userId)
         {
             User userExist = await _userManager.FindByIdAsync(userId);
@@ -259,6 +264,7 @@ namespace OnlineShopping.Controllers
         //PHONE NUMBER - shop owner not allows edit phone number of other role
 
         [HttpGet("individual/phone-number/get-otp")]
+        [Authorize(Roles = "CUSTOMER,ASSISTANT,SHOP_OWNER")]
         public async Task<IActionResult> SendOTPConfirmation([Required] string phoneNums)
         {
             var phoneExist = await _dbContext.Users.FirstOrDefaultAsync(u => u.PhoneNumber.Equals(phoneNums) && u.PhoneNumberConfirmed == true);
@@ -279,6 +285,7 @@ namespace OnlineShopping.Controllers
 
         //ADD
         [HttpPost("individual/phone-number/add")]
+        [Authorize(Roles = "CUSTOMER,ASSISTANT,SHOP_OWNER")]
         public async Task<IActionResult> AddPhoneNumber(string phoneNumber, string otp)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -296,6 +303,7 @@ namespace OnlineShopping.Controllers
         }
 
         //UPDATE
+        [Authorize(Roles = "CUSTOMER,ASSISTANT,SHOP_OWNER")]
         [HttpPut("individual/phone-number/update")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> ChangeCustomerPhoneNum(string phoneNumber, string otp)
@@ -319,6 +327,7 @@ namespace OnlineShopping.Controllers
         //ACTIVATION
         //disable individual
         [HttpPut("individual/disable-account")]
+        [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> DisableUserAccount([Required] string password)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -341,6 +350,7 @@ namespace OnlineShopping.Controllers
 
         //enable individual
         [HttpGet("individual/enable-account-otp")]
+        [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> GetEnableUserAccountOTP([Required] string email)
         {
             User userExist = await _userManager.FindByEmailAsync(email);
@@ -356,6 +366,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpPut("individual/enable-account")]
+        [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> EnableUserAccount([Required] string email, [Required] string totpCode)
         {
             User userExist = await _userManager.FindByEmailAsync(email);
@@ -379,6 +390,7 @@ namespace OnlineShopping.Controllers
 
         //{shop-owner}
         [HttpPut("all/toggle-account-activation")]
+        [Authorize(Roles = "SHOP_OWNER")]
         public async Task<IActionResult> ToggleAccountActivation([Required] string userId, [Required] string password)
         {
             User userExist = await _userManager.FindByIdAsync(userId);
@@ -400,6 +412,7 @@ namespace OnlineShopping.Controllers
 
                                                                                             //ADDRESS
         //VIEW
+         [Authorize(Roles = "CUSTOMER")]
         [HttpGet("customer-infor/address")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> GetCustomerAddress()
@@ -504,6 +517,7 @@ namespace OnlineShopping.Controllers
 
 
         [HttpGet("customer-infor/csv")]
+        [Authorize(Roles = "SHOP_OWNER")]
         public async Task<IActionResult> DownloadAllUserInforCSV()
         {
             var data = await _dbContext.Users.ToListAsync();

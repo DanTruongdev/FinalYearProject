@@ -1,4 +1,5 @@
 ﻿using Castle.Core.Internal;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -15,6 +16,7 @@ using OnlineShopping.ViewModels;
 using OnlineShopping.ViewModels.Post;
 using OnlineShopping.ViewModels.Warehouse;
 using System.ComponentModel.DataAnnotations;
+using System.Net.Mail;
 using System.Security.Claims;
 using System.Text;
 
@@ -44,11 +46,12 @@ namespace OnlineShopping.Controllers
         }
 
 
-       
 
 
-            //wood
-            [HttpGet("shop-data/woods")]
+
+        //wood
+
+        [HttpGet("shop-data/woods")]
         public async Task<IActionResult> GetWood()
         {
 
@@ -61,7 +64,7 @@ namespace OnlineShopping.Controllers
             }).ToList();
             return Ok(response);
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("shop-data/woods/add")]
         public async Task<IActionResult> AddWood([Required] string woodType)
         {
@@ -87,7 +90,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when creating new wood"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPut("shop-data/woods/update")]
         public async Task<IActionResult> EditWood([Required] int woodId, [Required] string woodType)
         {
@@ -112,7 +115,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when updating wood"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpDelete("shop-data/woods/remove/{id}")]
         public async Task<IActionResult> RemoveWood([Required] int id)
         {
@@ -137,7 +140,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when remove wood"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("shop-data/woods/search")]
         public async Task<IActionResult> SearchWood(string? searchString)
         {
@@ -152,8 +155,9 @@ namespace OnlineShopping.Controllers
             }).ToList();
             return Ok(response);
         }
-
-                                                                                            //label
+        [Authorize(Roles = "ASSISTANT")]
+        //label
+ 
         [HttpGet("shop-data/labels")]
         public async Task<IActionResult> GetLabel()
         {
@@ -166,7 +170,7 @@ namespace OnlineShopping.Controllers
             }).ToList();
             return Ok(response);
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("shop-data/labels/add")]
         public async Task<IActionResult> AddLabel([Required] string labelName)
         {
@@ -190,7 +194,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when creating new label"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPut("shop-data/labels/update")]
         public async Task<IActionResult> EditLabel([Required] int labelId, [Required] string labelName)
         {
@@ -216,7 +220,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when updating label"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpDelete("shop-data/labels/remove/{id}")]
         public async Task<IActionResult> RemoveLabel([Required] int id)
         {
@@ -241,7 +245,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when remove label"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("shop-data/labels/search")]
         public async Task<IActionResult> SearchLabel(string? searchString)
         {
@@ -257,7 +261,7 @@ namespace OnlineShopping.Controllers
             return Ok(response);
         }
 
-                                                                                                
+
 
         //color
 
@@ -273,7 +277,7 @@ namespace OnlineShopping.Controllers
             }).ToList();
             return Ok(response);
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("shop-data/colors/add")]
         public async Task<IActionResult> AddColor([Required] string colorName)
         {
@@ -300,7 +304,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when creating new color"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPut("shop-data/colors/update")]
         public async Task<IActionResult> EditColor([Required] int colorId, [Required] string colorName)
         {
@@ -325,7 +329,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when updating color"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpDelete("shop-data/colors/remove/{id}")]
         public async Task<IActionResult> RemoveColors([Required] int id)
         {
@@ -350,7 +354,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occurs when remove color"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("shop-data/colors/search")]
         public async Task<IActionResult> SearchColor(string? searchString)
         {
@@ -369,6 +373,7 @@ namespace OnlineShopping.Controllers
 
 
         //Material
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("shop-data/materials/search")]
         public async Task<IActionResult> SearchMaterial(string? searchString)
         {
@@ -394,6 +399,7 @@ namespace OnlineShopping.Controllers
             });
             return Ok(response);
         }
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("shop-data/materials")]
         public async Task<IActionResult> GetMaterial() 
         {
@@ -416,7 +422,7 @@ namespace OnlineShopping.Controllers
             });
             return Ok(response);           
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("shop-data/materials/add")]
         public async Task<IActionResult> AddMaterial([FromForm] MaterialViewModel userInput)
         {
@@ -463,7 +469,7 @@ namespace OnlineShopping.Controllers
 
         }
 
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPut("shop-data/materials/edit")]
         public async Task<IActionResult> EditMaterial([FromForm] EditMaterialViewModel userInput)
         {
@@ -507,7 +513,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", $"An error occur when updating material with id = {materialExist.MaterialId}"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpDelete("shop-data/materials/delete/{materialId}")]
         public async Task<IActionResult> RemoveMaterial([FromRoute] int materialId)
         {
@@ -538,6 +544,7 @@ namespace OnlineShopping.Controllers
         }
 
         // Import material from supplier 
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("warehouse/material/imports")]
         public async Task<IActionResult> GetImports()
         {
@@ -546,7 +553,7 @@ namespace OnlineShopping.Controllers
             var response = imports.Select(i => new
             {
                 ImportId = i.ImportId,
-                CreatedBy = i.User.FirstName + " " + i.User.LastName,
+                CreatedBy = i.User.ToString(),
                 RepositoryId = i.RepositoryId,
                 RepositoryAddress = i.Repository.Address.ToString(),
                 TotalCost = i.ImportDetails.Sum(id => (id.Material.MaterialPrice * id.Quantity)),
@@ -563,7 +570,7 @@ namespace OnlineShopping.Controllers
             });
             return Ok(response);
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("warehouse/material/imports/create")]
         public async Task<IActionResult> CreateImports([FromBody] ImportMaterialViewModel userInput)
         {
@@ -636,7 +643,7 @@ namespace OnlineShopping.Controllers
             });
 
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPut("warehouse/material/imports/confirm/{importId}")]
         public async Task<IActionResult> ConfirmImports([FromRoute] int importId,  [FromForm] ConfirmImportViewModel userInput)
         {
@@ -702,7 +709,7 @@ namespace OnlineShopping.Controllers
             
         }
 
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpDelete("warehouse/material/imports/remove/{importId}")] 
         public async Task<IActionResult> RemoveImports([FromRoute] int importId)
         {
@@ -726,6 +733,7 @@ namespace OnlineShopping.Controllers
         }
 
         //lich su nhap material tu supplier -> csv 
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("warehouse/material/import-history/to-csv")]
         public async Task<IActionResult> GetImportMaterialHistoryCSV()
         {
@@ -758,6 +766,7 @@ namespace OnlineShopping.Controllers
         }
 
         //Repository 
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("warehouse/repositories/search")]
         public async Task<IActionResult> SearchRepositories(string searchString)
         {
@@ -775,6 +784,7 @@ namespace OnlineShopping.Controllers
             return Ok(response);
 
         }
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("warehouse/repositories")]
         public async Task<IActionResult> GetRepositories()
         {
@@ -791,7 +801,7 @@ namespace OnlineShopping.Controllers
             });
             return Ok(response);
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("warehouse/repositories/{repoId}")]
         public async Task<IActionResult> GetRepositoryDetail([FromRoute] int repoId)
         {
@@ -825,7 +835,7 @@ namespace OnlineShopping.Controllers
                 })
             });
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("warehouse/repositories/add")]
         public async Task<IActionResult> AddRepository([FromForm] RepositoryViewModel userInput)
         {
@@ -874,7 +884,7 @@ namespace OnlineShopping.Controllers
                     new Response("Error", "An error occur when adding new repository"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPut("warehouse/repositories/{repoId}/edit")]
         public async Task<IActionResult> EditRepository([FromRoute] int repoId, [FromForm] EditRepositoryViewModel userInput)
         {
@@ -900,7 +910,7 @@ namespace OnlineShopping.Controllers
                    new Response("Error", $"An error occurs when import furnitures into repository with id = {repoId}"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpDelete("warehouse/repositories/{repoId}/remove")]
         public async Task<IActionResult> RemoveRepository([FromRoute] int repoId, [Required] string password) // yeu cau nhap password de xoa
         {
@@ -929,6 +939,7 @@ namespace OnlineShopping.Controllers
         }
 
         //Import items into Repository 
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("warehouse/repositories/{repoId}/import-material")]
         public async Task<IActionResult> ImportMaterialIntoRepository([FromRoute] int repoId, [FromBody]  ImportViewModel<int> userInput)
         {
@@ -993,7 +1004,7 @@ namespace OnlineShopping.Controllers
                    new Response("Error", $"An error occurs when import furnitures to repository with id = {repoId}"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("warehouse/repositories/{repoId}/import-furniture")]
         public async Task<IActionResult> ImportFurnitureIntoRepository([FromRoute] int repoId, [FromBody] ImportViewModel<string> userInput)
         {
@@ -1061,6 +1072,7 @@ namespace OnlineShopping.Controllers
         }
 
         //Export item from Repository 
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("warehouse/repositories/{fromRepoId}/export-material")]
         public async Task<IActionResult> ExportMaterialFromRepository([FromRoute] int fromRepoId, [FromBody] ExportViewModel<int> userInput)
         {
@@ -1114,7 +1126,7 @@ namespace OnlineShopping.Controllers
                   new Response("Error", "An error occurs when exporting materials"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("warehouse/repositories/{fromRepoId}/export-furniture")]
         public async Task<IActionResult> ExportFurnitureFromRepository([FromRoute] int fromRepoId, [FromForm] ExportViewModel<string> userInput)
         {
@@ -1169,9 +1181,10 @@ namespace OnlineShopping.Controllers
                   new Response("Error", "An error occurs when exporting materials"));
             }
         }
-  
+
 
         //Transfer item from a repository to other 
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPut("warehouse/repositories/{fromRepoId}/material/transfer/{toRepoId}")]
         public async Task<IActionResult> TransferMaterial([FromRoute] int fromRepoId, [FromRoute] int toRepoId, List<ItemViewModel<int>> tranferItemList)
         {
@@ -1269,7 +1282,7 @@ namespace OnlineShopping.Controllers
             }
 
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPut("warehouse/repositories/{fromRepoId}/furniture/transfer/{toRepoId}")]
         public async Task<IActionResult> TransferFurniture([FromRoute] int fromRepoId, [FromRoute] int toRepoId, List<ItemViewModel<string>> tranferItemList)
         {
@@ -1368,6 +1381,7 @@ namespace OnlineShopping.Controllers
         }
 
         //View repo history
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("warehouse/repositories/{repoId}/material-repository-history")]
         public async Task<IActionResult> MaterialRepositoryHistory([FromRoute] int repoId, string? type)
         {
@@ -1383,6 +1397,7 @@ namespace OnlineShopping.Controllers
                 RepositoryId = d.RepositoryId,
                 Type = d.Type,
                 AssistantId = d.AssistantId,
+                AssistantName = d.Assistant.ToString(),
                 MaterialName = d.Material.MaterialName,
                 Quantity = d.Quantity,
                 Descrition = d.Description,
@@ -1390,7 +1405,7 @@ namespace OnlineShopping.Controllers
             });
             return Ok(response);
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("warehouse/repositories/{repoId}/furniture-repository-history")]
         public async Task<IActionResult> FuritureRepositoryHistory([FromRoute] int repoId, string? type)
         {
@@ -1406,6 +1421,7 @@ namespace OnlineShopping.Controllers
                 RepositoryId = d.RepositoryId,
                 Type = d.Type,
                 AssistantId = d.AssistantId,
+                AssistantName = d.Assistant.ToString(),
                 FurnitureSpecificationName = d.FurnitureSpecification.FurnitureSpecificationName,
                 Quantity = d.Quantity,
                 Descrition = d.Description,
@@ -1416,6 +1432,7 @@ namespace OnlineShopping.Controllers
 
 
         //xuat lich su xuat/nhap kho -> csv
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("warehouse/repositories/furniture-repository-history/to-csv")]
         public async Task<IActionResult> GetFurnitureRepositoryHistoryCSV()
         {
@@ -1440,7 +1457,7 @@ namespace OnlineShopping.Controllers
             byte[] bytes = Encoding.ASCII.GetBytes(csv.ToString());
             return File(bytes, "text/csv", "Furniture_repository_history.csv");
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("warehouse/repositories/material-repository-history/to-csv" )]
         public async Task<IActionResult> GetMaterialRepositoryHistoryCSV()
         {
@@ -1470,11 +1487,13 @@ namespace OnlineShopping.Controllers
 
 
         //view feedback 
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("feedbacks")]
         public async Task<IActionResult> GetAllFeedback()
         {
             var feedbacks = await _dbContext.Feedbacks.ToListAsync();
             if (feedbacks.IsNullOrEmpty()) return Ok(new List<Feedback>());
+            feedbacks = feedbacks.OrderByDescending(f => f.CreationDate).ToList();
             var response = feedbacks.Select(fb => new
             {
                 FeedbackId = fb.FeedbackId,
@@ -1490,6 +1509,7 @@ namespace OnlineShopping.Controllers
             return Ok(response);
         }
 
+        [Authorize(Roles = "ASSISTANT")]
         [HttpDelete("feedbacks/remove/{feedbackId}")]
         public async Task<IActionResult> RemoveFeedback([FromRoute] int feedbackId)
         {
@@ -1516,11 +1536,14 @@ namespace OnlineShopping.Controllers
             
         }
 
+
+       
         //view furniture order
+        [Authorize(Roles = "ASSISTANT,SHOP_OWNER")]
         [HttpGet("customer-requests/orders")]
         public async Task<IActionResult> GetAllOrder()
         {
-            var furnitureOrder = _dbContext.Orders;
+            var furnitureOrder = _dbContext.Orders.OrderByDescending(o => o.OrderDate);
             if (furnitureOrder.Count() == 0) return NotFound("There is no any order");
           
             var response = furnitureOrder.Select(o => new
@@ -1553,6 +1576,7 @@ namespace OnlineShopping.Controllers
         }
 
         //update order status
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPut("customer-requests/orders/{orderId}/change-status")]
         public async Task<IActionResult> UpdateOrderStatus([FromRoute] int orderId, string status)
         {
@@ -1591,7 +1615,39 @@ namespace OnlineShopping.Controllers
             }       
         }
 
+        //get all warranties
+        [Authorize(Roles = "ASSISTANT")]
+        [HttpGet("customer-requests/warranties")]
+        public async Task<IActionResult> GetAllWarranties()
+        {
+            var warranties = await _dbContext.Warranties.ToListAsync();
+            if (warranties.IsNullOrEmpty()) return Ok(new List<Warranty>());
+            warranties = warranties.OrderByDescending(w => w.OrderId).ToList();
+            var response = warranties.Select(w => new
+            {
+                WarrantyId = w.WarrantyId,
+                CustomerId = w.UserId,
+                CustomerName = w.User.ToString(),
+                OrderId = w.OrderId,
+                WarrantyReasons = w.WarrantyReasons,
+                EstimatedTime = w.EstimatedTime.HasValue ? w.EstimatedTime.ToString() : "",
+                Images = w.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
+                {
+                    Name = a.AttachmentName,
+                    Path = _firebaseService.GetDownloadUrl(a.Path)
+                }),
+                Videos = w.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
+                {
+                    Name = a.AttachmentName,
+                    Path = _firebaseService.GetDownloadUrl(a.Path)
+                })
+
+            }) ;
+            return Ok(response);
+        }
+
         //CRUD post
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("shop-data/posts")]
         public async Task<IActionResult> GetPost([FromQuery]string? type)
         {
@@ -1612,7 +1668,7 @@ namespace OnlineShopping.Controllers
             });
             return Ok(response);
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPost("shop-data/posts/add")]
         public async Task<IActionResult> AddPost([FromForm] PostViewModel userInput)
         {
@@ -1654,7 +1710,7 @@ namespace OnlineShopping.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", "An error occurs when adding new post"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpPut("shop-data/posts/{postId}/edit")]
         public async Task<IActionResult> EditPost([FromRoute] int postId, [FromForm] PostViewModel userInput)
         {
@@ -1694,7 +1750,7 @@ namespace OnlineShopping.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", $"An error occurs when upload the post with id = {postId}"));
             }
         }
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpDelete("shop-data/posts/{postId}/remove")]
         public async Task<IActionResult> RemovePost([FromRoute] int postId)
         {
@@ -1713,10 +1769,13 @@ namespace OnlineShopping.Controllers
         }
 
 
+      
+
 
 
 
         //get log
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("logs")]
         public async Task<IActionResult> GetLog()
         {
@@ -1735,7 +1794,7 @@ namespace OnlineShopping.Controllers
         }
 
         //get announcement
-
+        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("announcements")]
         public async Task<IActionResult> GetAnnouncement()
         {

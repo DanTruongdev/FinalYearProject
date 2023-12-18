@@ -14,6 +14,7 @@ using OnlineShopping.Models;
 using OnlineShopping.ViewModels;
 using OnlineShopping.ViewModels.Login;
 using OnlineShopping.ViewModels.User;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -50,18 +51,15 @@ namespace OnlineShopping.Controllers
             _hubContext = hubContext;
         }
 
-        [HttpGet("abc")]
-        [AllowAnonymous]
-        public async Task<IActionResult> SignalRTets()
+        [HttpGet("abc")]     
+        public async Task<IActionResult> SignalRTest()
         {
             var data = new JwtToken("testing123", DateTime.Now);
             _hubContext.Clients.All.SendAsync("ReceiveJWTToken", data);
             return Ok("Done");
         }
-
-
-
-        [HttpPost("create-account/{roleId}")]    
+     
+        [HttpPost("create-account/{roleId}")]
         public async Task<IActionResult> RegisterCustomerAccount([FromBody] RegisterCustomerAccount userInfor, [FromRoute] string roleId)
         {
             var roleExist = await _roleManager.FindByIdAsync(roleId);
@@ -124,7 +122,8 @@ namespace OnlineShopping.Controllers
             }
 
             //if role is not customer
-            if (!roleExist.Id.Equals("1")) {
+            if (!roleExist.Id.Equals("1"))
+            {
                 var response = new
                 {
                     FirstName = newUser.FirstName,
@@ -152,7 +151,7 @@ namespace OnlineShopping.Controllers
             return StatusCode(StatusCodes.Status201Created,
                     new Response("Success", $"Account created & a confirmation email sent to {newUser.Email} successFully"));
         }
-
+     
         [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail(string token, string email)
         {
@@ -165,7 +164,7 @@ namespace OnlineShopping.Controllers
             //return Ok(new Response("Success", "success email confirmation"));
             return RedirectPermanent("http://localhost:8080");
         }
-
+   
         [HttpGet("signin-google")]
         public IActionResult SignInGoogle()
         {
@@ -173,7 +172,7 @@ namespace OnlineShopping.Controllers
             var properties = _signInManager.ConfigureExternalAuthenticationProperties("Google", redirectUri);
             return new ChallengeResult("Google", properties);
         }
-
+     
         [HttpGet("google-callback")]
         public async Task<IActionResult> HandleGoogleCallback()
         {
@@ -269,7 +268,7 @@ namespace OnlineShopping.Controllers
             }
             return Ok();
         }
-
+     
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginUser loginModel)
         {
@@ -301,31 +300,59 @@ namespace OnlineShopping.Controllers
                  new Response("Success", $"The system has sent an OTP to your email {loggedInUser.Email}"));
             }
             var jwtToken = _projectHelper.GenerateJWTToken(loggedInUser, await _userManager.GetRolesAsync(loggedInUser));
+            var role = await _userManager.GetRolesAsync(loggedInUser);
             return Ok(new
             {
                 token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
-                expiration = jwtToken.ValidTo
+                expiration = jwtToken.ValidTo,
+                role = role.First()
             });
         }
 
         [HttpPost("login-2FA")]
-        public async Task<IActionResult> LoginOTP(string twoFactorToken, string email)
+        public async Task<IActionResult> LoginOTP([FromBody] Login2fa model)
         {
-            var user = await _userManager.FindByEmailAsync(email);
-            var signIn = await _signInManager.TwoFactorSignInAsync("Email", twoFactorToken, false, false);
-            if (signIn.Succeeded)
+            var user = await _userManager.FindByEmailAsync(model.email);
+            if (user == null) return Unauthorized(new Response("Error", "Email is not linked any account"));
+            await _signInManager.SignOutAsync();
+            //var currentUser = await _signInManager.GetTwoFactorAuthenticationUserAsync();
+            //if (currentUser.Id.Equals(user.Id)) ;
+            var signIn = await _signInManager.TwoFactorSignInAsync("Email", model.token, false, false);
+            if (!signIn.Succeeded)
             {
-                if (user != null)
-                {
-                    var jwtToken = _projectHelper.GenerateJWTToken(user, await _userManager.GetRolesAsync(user));
-                    return Ok(new
-                    {
-                        token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
-                        expiration = jwtToken.ValidTo
-                    });
-                }
+                return Unauthorized(new Response("Error", "Invalid token"));
+                           
             }
-            return Unauthorized();
+            var role = await _userManager.GetRolesAsync(user);
+            var jwtToken = _projectHelper.GenerateJWTToken(user, await _userManager.GetRolesAsync(user));
+            return Ok(new
+            {
+                token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
+                expiration = jwtToken.ValidTo,
+                role = role.First()
+            });
+        }
+
+        [Authorize(Roles = "CUSTOMER")]
+        [HttpPut("change-password")]
+        public async Task<IActionResult> ChangePassword([Required] string oldPass, [Required] string newPass)
+        {
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            if (email == null) return NotFound("Logged in user not found ");
+            var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
+            var passwordChecker = await _userManager.CheckPasswordAsync(loggedInUser, oldPass);
+            //checking if the user existed and password was valid
+
+            if (!passwordChecker) return Unauthorized(new Response("Error", "Invalid old password"));
+            var token = await _userManager.GeneratePasswordResetTokenAsync(loggedInUser);
+            var result = await _userManager.ResetPasswordAsync(loggedInUser, token, newPass);
+            if (!result.Succeeded)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", "Failed to change password"));
+
+            }
+            return Ok(new Response("Success", "Change password successfully"));
+
         }
 
         [HttpPost("forgot-password")]
@@ -346,11 +373,8 @@ namespace OnlineShopping.Controllers
             return StatusCode(StatusCodes.Status400BadRequest,
                    new Response("Error", "This email is not linked to any account"));
         }
-
-
         [HttpPost("reset-password")]
-        [AllowAnonymous]
-
+ 
         public async Task<IActionResult> SetNewPassword(ResetPassword resetPassword)
         {
             var user = await _userManager.FindByEmailAsync(resetPassword.Email);
@@ -359,9 +383,9 @@ namespace OnlineShopping.Controllers
             if (resetPassResult.Succeeded)
             {
                 return StatusCode(StatusCodes.Status200OK,
-                       new Response("Success", resetPassword.Password));
+                       new Response("Success", "Reset password successfully"));
             }
-            else return BadRequest(new Response("Error", "Invalid token"));        
+            else return BadRequest(new Response("Error", "Invalid token"));
         }
-    } 
+    }
 }

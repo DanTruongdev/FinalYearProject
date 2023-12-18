@@ -20,6 +20,7 @@ using Castle.Core.Internal;
 using OnlineShopping.ViewModels.Furniture;
 using OnlineShopping.ViewModels.Warranty;
 using OnlineShopping.Data;
+using Castle.Core;
 
 namespace OnlineShopping.Controllers
 {
@@ -50,24 +51,11 @@ namespace OnlineShopping.Controllers
             _projectHelper = projectHelper;
         }
 
-        [HttpGet("resetuser")]
-        [AllowAnonymous]
-        public async Task<IActionResult> abc()
-        {
-            var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Logged in user not found ");
-            var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
-            loggedInUser.Debit = 0;
-            loggedInUser.Spent = 0;
-            loggedInUser.Point = 0;
-            _dbContext.Update(loggedInUser);
-            await _dbContext.SaveChangesAsync();
-            return Ok();
-        }
+ 
 
         //FURNITURE
         [HttpGet("furnitures")]
-        [AllowAnonymous]
+        
         public async Task<IActionResult> GetAllFurniture()
         {
             bool isLoggedIn = false;
@@ -108,7 +96,7 @@ namespace OnlineShopping.Controllers
 
 
         [HttpGet("furnitures/{id}")]
-        [AllowAnonymous]
+        
         public async Task<IActionResult> GetFurnitureSpecificationById(int id)
         {
             var furnitureSpecifications = await _dbContext.FurnitureSpecifications.Where(fs => fs.FurnitureId == id).ToListAsync();
@@ -160,7 +148,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpGet("furnitures/search")]
-        [AllowAnonymous]
+        
         public async Task<IActionResult> SearchFurnitureF(string keyword)
         {
             if (!keyword.IsNullOrEmpty()) keyword = keyword.ToUpper().Trim();
@@ -188,7 +176,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpGet("furnitures/filter")]
-        [AllowAnonymous]
+        
         public async Task<IActionResult> FurnitureFilter([FromQuery] FurnitureFilterViewModel filter)
         {
             filter.MaxCost = filter.MaxCost == 0 ? double.MaxValue : filter.MaxCost;
@@ -303,7 +291,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> DeleteCartItem(string id)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
             var cartItems = loggedInUser.Cart.CartDetails.ToList();
             var deleteItem = cartItems.FirstOrDefault(c => c.FurnitureSpecificationId.Equals(id));
@@ -397,7 +385,7 @@ namespace OnlineShopping.Controllers
         {
             if (furnitureId == null) return BadRequest();
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.WishList).FirstOrDefaultAsync(u => u.Email.Equals(email));
             var furniture = await _dbContext.Furnitures.FindAsync(furnitureId);
             if (furniture == null) return NotFound("The furniture not found");
@@ -620,10 +608,9 @@ namespace OnlineShopping.Controllers
             {
                 await _dbContext.AddAsync(newOrder);
                 await _dbContext.SaveChangesAsync();
-                await _projectHelper.CreateAnnouncementAsync(loggedInUser, "Order successfully", "You have  ordered successfully, it will be delivered to you as soon as possible");
                 if (model.UsedPoint != 0)
                 {
-                    _projectHelper.CreatePointHistoryAsync(loggedInUser, -1 * model.UsedPoint, $"Use in order with id = {newOrder.OrderId}");
+                    await _projectHelper.CreatePointHistoryAsync(loggedInUser, -1 * model.UsedPoint, $"Use in order with id = {newOrder.OrderId}");
                     loggedInUser.Point -= model.UsedPoint;
                     _dbContext.Update(loggedInUser);
                 }
@@ -675,10 +662,19 @@ namespace OnlineShopping.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", "An error occurs when processing order"));
             }
+            await _projectHelper.CreateAnnouncementAsync(loggedInUser, "Order successfully", "You have  ordered successfully, it will be delivered to you as soon as possible.");
             return Ok("Order successfully");
         }
 
-
+        [HttpPost("repayment/{orderId}")]
+        [Authorize(Roles = "CUSTOMER")]
+        public async Task<IActionResult> Repayment([FromRoute] int orderId) 
+        {
+            var order = await _dbContext.Orders.FindAsync(orderId);
+            if (order == null) return NotFound(new Response("Error", $"The order with id = {orderId} was not found"));
+            if (!order.Status.Equals("Pending")) return BadRequest(new Response("Error", $"The order must be in \"Pending\" status to repay"));
+            return Ok(_projectHelper.UrlPayment(order.PaymentId, orderId));
+        }
 
         [HttpGet("vnpay-return")]
         public async Task<IActionResult> VNPayReturn()
@@ -711,16 +707,17 @@ namespace OnlineShopping.Controllers
                 bool checkSignature = vnpay.ValidateSignature(vnp_SecureHash, vnp_HashSecret);
                 if (checkSignature)
                 {
+                    var order = await _dbContext.Orders.FindAsync(orderId);
                     if (vnp_ResponseCode == "00" && vnp_TransactionStatus == "00")
                     {
-                        var order = await _dbContext.Orders.FindAsync(orderId);
+                        await _projectHelper.CreateAnnouncementAsync(order.Customer, "Order successfully", "You have  ordered successfully, it will be delivered to you as soon as possible.");
                         order.IsPaid = true;
                         order.Status = "Preparing";
-                        order.Customer.Spent *= 2;
+                        order.Customer.Spent += order.TotalCost;
                         if (!order.CustomizeFurnitureOrderDetails.IsNullOrEmpty())
                         {
                             order.Customer.Debit += order.TotalCost;
-                            order.TotalCost += order.TotalCost;
+                            order.TotalCost *= 2;
                             order.IsPaid = false;
                             order.Note += " (deposit has been paid)";
                         }
@@ -731,10 +728,10 @@ namespace OnlineShopping.Controllers
                     }
                     else
                     {
-
-                        return StatusCode(StatusCodes.Status406NotAcceptable,
-                            new Response("error", $"error payment OrderId={orderId}"));
-
+                        await _projectHelper.CreateAnnouncementAsync(order.Customer, "Failed to order", "Order failed due to an error during the payment process. Please pay again.");
+                        return RedirectPermanent("http://localhost:8080/ProfileCusPage");
+                        //return StatusCode(StatusCodes.Status406NotAcceptable,
+                        //    new Response("error", $"error payment OrderId={orderId}"));
                     }
                 }
                 else
@@ -807,20 +804,33 @@ namespace OnlineShopping.Controllers
             var orderList = new List<Order>();
             if (status.Equals("All")) orderList = loggedInUser.Orders.ToList();
             else orderList = loggedInUser.Orders.Where(o => o.Status.Equals(status)).ToList();
-            if (orderList.Count == 0) return NotFound($"There is no order in status: {status}");
-
+            if (orderList.Count == 0) return Ok(orderList);
+            orderList = orderList.OrderByDescending(o => o.OrderDate).ToList();
             var response = new List<object>();
             foreach (var order in orderList)
             {
                 if (order.TotalCost > 0)
                 {
-                    bool isValid = (order.Status.Equals("Pending") && order.Payment.PaymentId != 1 && DateTime.Now > order.OrderDate.AddMinutes(30)) ? false : true;
+                    bool isValid = false;
+                    var isCustomOrder = order.CustomizeFurnitureOrderDetails.IsNullOrEmpty() ? false : true;
+                    if (isCustomOrder)
+                    {                       
+                        isValid = !order.Status.Equals("Pending") && DateTime.Now < order.OrderDate.AddMinutes(10) ? true : false;
+                    }
+                    else
+                    {
+                        isValid = (order.Status.Equals("Pending") && order.Payment.PaymentId != 1 && DateTime.Now > order.OrderDate.AddMinutes(10)) ? false : true;
+                    }
+                    
                     if (!isValid)
                     {
                         order.Status = "Canceled";
                         _dbContext.Update(order);
+                        await _projectHelper.CreateAnnouncementAsync(order.Customer, "Order canceled", $"Your order \"{order.CustomerId}\" has been canceled because of overdue payment");
                         await _dbContext.SaveChangesAsync();
                     }
+
+
                     var furnitures = new object();
                     if (!order.FurnitureOrderDetails.IsNullOrEmpty())
                     {
@@ -856,7 +866,9 @@ namespace OnlineShopping.Controllers
                         OrderDate = order.OrderDate,
                         Status = order.Status,
                         Note = order.Note,
-                        IsPaid = order.IsPaid
+                        IsPaid = order.IsPaid,
+                        isCustomOrder = order.CustomizeFurnitureOrderDetails.IsNullOrEmpty() ? false : true,
+                        
                     };
                     response.Add(data);
                 }
@@ -1083,7 +1095,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> GetCustomizeFurniture(string status)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined in user not found ");
+            if (email == null) return NotFound("Logged in in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             List<CustomizeFurniture> customizeFurnitures = new List<CustomizeFurniture>();
             if (status.Equals("All")) customizeFurnitures = loggedInUser.CustomizeFurnitures.ToList();
@@ -1138,10 +1150,10 @@ namespace OnlineShopping.Controllers
         //CREATE
         [HttpPost("customize-furnitures/create")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> CreateCustomizeFurniture([FromBody] CustomizeFurnitureViewModel userInput)
+        public async Task<IActionResult> CreateCustomizeFurniture([FromForm] CustomizeFurnitureViewModel userInput)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             //var checkCustomerInfor = CheckCustomerInfor(loggedInUser);
             //if (checkCustomerInfor != null) return StatusCode(StatusCodes.Status405MethodNotAllowed,
@@ -1199,7 +1211,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> UpdateCustomizeFurniture([FromForm] EditCustomizeFurnitureViewModel userInput)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             CustomizeFurniture customizeFurniture = loggedInUser.CustomizeFurnitures.FirstOrDefault(cf => cf.CustomizeFurnitureId.Equals(userInput.CustomizeFurnitureId));
             if (customizeFurniture == null) return NotFound("Customize furniture not found");
@@ -1247,7 +1259,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> DeleteCustomizeFurniture(int id)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             CustomizeFurniture customizeFurniture = await _dbContext.CustomizeFurnitures.FindAsync(id);
             if (customizeFurniture == null) return NotFound("Customize furniture not found");
@@ -1283,7 +1295,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> GetWarranties(string? status)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             status = status.IsNullOrEmpty() ? "All" : status;
             if (!status.Equals("Pending") && !status.Equals("Accepted") && !status.Equals("Not accepted") && !status.Equals("All")) return BadRequest("The status must be \"Pending\", \"Accepted\", \"Not accepted\" and \"All\"");
@@ -1320,7 +1332,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> CreateWarranty([FromForm] WarrantyViewModel userInput)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             var orderExist = loggedInUser.Orders.FirstOrDefault(w => w.OrderId == userInput.OrderId);
             if (orderExist == null) return NotFound($"The order witd id = {userInput.OrderId} does not exist in the ordered list of customer");
@@ -1370,7 +1382,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> UpdateWarranty([FromForm] EditWarrantyViewModel userInput)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             var editWarranty = loggedInUser.Warranties.FirstOrDefault(w => w.WarrantyId == userInput.WarrantyId);
             if (editWarranty == null) return NotFound($"warranty claim with id = {userInput.WarrantyId} was not found in in the customer's warranty claim list");
@@ -1413,7 +1425,7 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> RemoveWarranty([Required] int id)
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return NotFound("Loggined user not found ");
+            if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             Warranty removeWarranty = loggedInUser.Warranties.FirstOrDefault(w => w.WarrantyId == id);
             if (removeWarranty == null) return NotFound($"warranty claim with id = {id} was not found in in the customer's warranty claim list");
