@@ -96,6 +96,9 @@ var firebaseConfig = configuration.GetSection("Firebase").Get<FirebaseConfigurat
 builder.Services.AddSingleton(firebaseConfig);
 builder.Services.AddScoped<IFirebaseService, FirebaseService>();
 
+//Add Dropbox Service
+builder.Services.AddScoped<IDropboxService, DropboxService>();
+
 //Add Project Helper
 builder.Services.AddScoped<IProjectHelper, ProjectHelper>();
 

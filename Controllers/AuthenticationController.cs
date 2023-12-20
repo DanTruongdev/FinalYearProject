@@ -1,4 +1,5 @@
-﻿using Google.Api.Gax;
+﻿using Bogus.DataSets;
+using Google.Api.Gax;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,10 +15,13 @@ using OnlineShopping.Models;
 using OnlineShopping.ViewModels;
 using OnlineShopping.ViewModels.Login;
 using OnlineShopping.ViewModels.User;
+using OtpNet;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
+using static System.Net.WebRequestMethods;
 
 namespace OnlineShopping.Controllers
 {
@@ -50,14 +54,7 @@ namespace OnlineShopping.Controllers
             _projectHelper = projectHelper;
             _hubContext = hubContext;
         }
-
-        [HttpGet("abc")]     
-        public async Task<IActionResult> SignalRTest()
-        {
-            var data = new JwtToken("testing123", DateTime.Now);
-            _hubContext.Clients.All.SendAsync("ReceiveJWTToken", data);
-            return Ok("Done");
-        }
+           
      
         [HttpPost("create-account/{roleId}")]
         public async Task<IActionResult> RegisterCustomerAccount([FromBody] RegisterCustomerAccount userInfor, [FromRoute] string roleId)
@@ -293,8 +290,13 @@ namespace OnlineShopping.Controllers
 
             if (loggedInUser.TwoFactorEnabled)
             {
-                var token = await _userManager.GenerateTwoFactorTokenAsync(loggedInUser, "Email");
-                var message = new Message(new string[] { loggedInUser.Email! }, "OTP Confirmation", token);
+                //var token = await _userManager.GenerateTwoFactorTokenAsync(loggedInUser, "Email");
+                //var message = new Message(new string[] { loggedInUser.Email! }, "OTP Confirmation", token);
+
+                byte[] secretKey = Encoding.ASCII.GetBytes(loggedInUser.Email);
+                var otp = new Totp(secretKey, step: 300, totpSize: 6);
+                var totpCode = otp.ComputeTotp(DateTime.Now);
+                var message = new Message(new string[] { loggedInUser.Email! }, "OTP Confirmation", totpCode);
                 _emailService.SendEmail(message);
                 return StatusCode(StatusCodes.Status200OK,
                  new Response("Success", $"The system has sent an OTP to your email {loggedInUser.Email}"));
@@ -317,11 +319,18 @@ namespace OnlineShopping.Controllers
             await _signInManager.SignOutAsync();
             //var currentUser = await _signInManager.GetTwoFactorAuthenticationUserAsync();
             //if (currentUser.Id.Equals(user.Id)) ;
-            var signIn = await _signInManager.TwoFactorSignInAsync("Email", model.token, false, false);
-            if (!signIn.Succeeded)
+            //var signIn = await _signInManager.TwoFactorSignInAsync("Email", model.token, false, false);
+
+            //if (!signIn.Succeeded)
+            //{
+            //    return Unauthorized(new Response("Error", "Invalid token"));
+
+            //}
+            var result = await _projectHelper.VerifyPhoneNum(model.email, model.token);
+            if (!result)
             {
                 return Unauthorized(new Response("Error", "Invalid token"));
-                           
+
             }
             var role = await _userManager.GetRolesAsync(user);
             var jwtToken = _projectHelper.GenerateJWTToken(user, await _userManager.GetRolesAsync(user));

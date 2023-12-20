@@ -40,6 +40,22 @@
           }
         }
       },
+      "Dropbox.Api/6.37.0": {
+        "type": "package",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.2"
+        },
+        "compile": {
+          "lib/netstandard2.0/Dropbox.Api.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Dropbox.Api.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Google.Api.Gax/4.4.0": {
         "type": "package",
         "dependencies": {
@@ -3034,6 +3050,19 @@
         "lib/netstandard1.5/Castle.Core.dll",
         "lib/netstandard1.5/Castle.Core.xml",
         "readme.txt"
+      ]
+    },
+    "Dropbox.Api/6.37.0": {
+      "sha512": "skZtihy8OCQPNfcRsEH1kUaXZxb2MVM9qOuGwPd0zJL+mrhBHjCfzFxwFxJfRgs/ZsTpo4uGaIbVEmxv4A7ahg==",
+      "type": "package",
+      "path": "dropbox.api/6.37.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "dropbox.api.6.37.0.nupkg.sha512",
+        "dropbox.api.nuspec",
+        "lib/netstandard2.0/Dropbox.Api.dll",
+        "lib/netstandard2.0/Dropbox.Api.xml"
       ]
     },
     "Google.Api.Gax/4.4.0": {
@@ -9057,6 +9086,7 @@
   "projectFileDependencyGroups": {
     "net6.0": [
       "Bogus >= 34.0.2",
+      "Dropbox.Api >= 6.37.0",
       "Google.Cloud.Storage.V1 >= 4.6.0",
       "Microsoft.AspNet.SignalR.Core >= 2.4.3",
       "Microsoft.AspNet.WebApi.Cors >= 5.2.9",
@@ -9117,6 +9147,10 @@
           "Bogus": {
             "target": "Package",
             "version": "[34.0.2, )"
+          },
+          "Dropbox.Api": {
+            "target": "Package",
+            "version": "[6.37.0, )"
           },
           "Google.Cloud.Storage.V1": {
             "target": "Package",

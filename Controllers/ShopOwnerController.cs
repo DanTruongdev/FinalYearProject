@@ -25,24 +25,19 @@ namespace OnlineShopping.Controllers
     [ApiController]
     public class ShopOwnerController : ControllerBase
     {
-        private readonly IHubContext<SignalHub> _hubContext;
-        private readonly ApplicationDbContext _dbContext;
-        private readonly UserManager<User> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly SignInManager<User> _signInManager;
-        private readonly IFirebaseService _firebaseService;
-        private readonly IProjectHelper _projectHelper;
 
-        public ShopOwnerController(IHubContext<SignalHub> hubContext, ApplicationDbContext dbContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager, 
-            SignInManager<User> signInManager, IFirebaseService firebaseService, IProjectHelper projectHelper)
+        private readonly ApplicationDbContext _dbContext;
+        private readonly UserManager<User> _userManager; 
+        private readonly IDropboxService _dropboxService;
+
+
+        public ShopOwnerController(ApplicationDbContext dbContext, UserManager<User> userManager, IDropboxService dropboxService, IProjectHelper projectHelper)
         {
-            _hubContext = hubContext;
+  
             _dbContext = dbContext;
             _userManager = userManager;
-            _roleManager = roleManager;
-            _signInManager = signInManager;
-            _firebaseService = firebaseService;
-            _projectHelper = projectHelper;
+            _dropboxService = dropboxService;
+
         }
 
 
@@ -76,15 +71,15 @@ namespace OnlineShopping.Controllers
                 Quantity = cf.Quantity,
                 DesiredCompletionDate = cf.DesiredCompletionDate,
                 CreationDate = cf.CreationDate,
-                Images = cf.Attachments.Where(a => a.Type.Equals("Images")).Select(a => new
+                Images = cf.Attachments.Where(a => a.Type.Equals("Images")).Select( a => new
                 {
                     AttachmentName = a.AttachmentName,
-                    Path = _firebaseService.GetDownloadUrl(a.Path)
+                    Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                 }),
-                Videos = cf.Attachments.Where(a => a.Type.Equals("Videos")).Select(a => new
+                Videos = cf.Attachments.Where(a => a.Type.Equals("Videos")).Select( a => new
                 {
                     AttachmentName = a.AttachmentName,
-                    Path = _firebaseService.GetDownloadUrl(a.Path)
+                    Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                 }),
                 Status = cf.Result.Status
             });
@@ -96,8 +91,8 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> GetCustomizeFurnitureRequest(string status)
         {
             List<CustomizeFurniture> customizeFurnitures = new List<CustomizeFurniture>();
-            if (status.Equals("All")) customizeFurnitures = await _dbContext.CustomizeFurnitures.ToListAsync();
-            else customizeFurnitures = await _dbContext.CustomizeFurnitures.Where(cf => cf.Result.Status.Equals(status)).ToListAsync();
+            if (status.Equals("All")) customizeFurnitures = await _dbContext.CustomizeFurnitures.OrderByDescending(cf => cf.CreationDate).ToListAsync();
+            else customizeFurnitures = await _dbContext.CustomizeFurnitures.OrderByDescending(cf => cf.CreationDate).Where(cf => cf.Result.Status.Equals(status)).ToListAsync();
             if (customizeFurnitures.Count == 0) return NotFound($"There is no customize furniture with {status} status");       
             try
             {
@@ -115,15 +110,15 @@ namespace OnlineShopping.Controllers
                     Quantity = cf.Quantity,
                     DesiredCompletionDate = cf.DesiredCompletionDate,
                     CreationDate = cf.CreationDate,
-                    Images = cf.Attachments.Where(a => a.Type.Equals("Images")).Select(a => new
+                    Images = cf.Attachments.Where(a => a.Type.Equals("Images")).Select( a => new
                     {
                         AttachmentName = a.AttachmentName,
-                        Path = _firebaseService.GetDownloadUrl(a.Path)
+                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                     }),
-                    Videos = cf.Attachments.Where(a => a.Type.Equals("Videos")).Select(a => new
+                    Videos = cf.Attachments.Where(a => a.Type.Equals("Videos")).Select( a => new
                     {
                         AttachmentName = a.AttachmentName,
-                        Path = _firebaseService.GetDownloadUrl(a.Path)
+                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                     }),
                     Status = cf.Result.Status
                 }).ToList();
@@ -171,12 +166,12 @@ namespace OnlineShopping.Controllers
         {
             var supliers = await _dbContext.Supliers.Where(r => r.SupplierName.Contains(searchString)).ToListAsync();
             if (supliers.IsNullOrEmpty()) return Ok(new List<Supplier>());
-            var response = supliers.Select(s => new
+            var response = supliers.Select( s => new
             {
                 SuppllierId = s.SupplierId,
                 SupplierName = s.SupplierName,
                 SupplierAddress = s.Address.ToString(),
-                SupplierImage = _firebaseService.GetDownloadUrl(s.SupplierImage),
+                SupplierImage =  _dropboxService.GetDownloadLinkAsync(s.SupplierImage).Result,
                 SupplierEmail = s.SupplierEmail,
                 SupplierPhoneNum = s.SupplierPhoneNums
             }) ;
@@ -188,12 +183,12 @@ namespace OnlineShopping.Controllers
         {
             var suppliers = _dbContext.Supliers;
             if (suppliers.Count() == 0) return NotFound("There is no any supplier");
-            var response = suppliers.Select(s => new
+            var response = suppliers.Select( s => new
             {
                 SupplierId = s.SupplierId,
                 SupplierName = s.SupplierName,
                 SupplierAddress = s.Address.ToString(),
-                SuplierImage = _firebaseService.GetDownloadUrl(s.SupplierImage),
+                SuplierImage =  _dropboxService.GetDownloadLinkAsync(s.SupplierImage).Result,
                 SuplierEmail = s.SupplierEmail,
                 SuplierPhoneNums = s.SupplierPhoneNums,
                 MaterialProvided = s.Materials.Select(m => new
@@ -237,7 +232,7 @@ namespace OnlineShopping.Controllers
             {
                 SupplierName = userInput.SupplierName,
                 SupplierAddressId = newAddress.AddressId,
-                SupplierImage = _firebaseService.UploadFile(userInput.SuplierImage),
+                SupplierImage = await _dropboxService.UploadAsync(userInput.SuplierImage),
                 SupplierEmail = userInput.SuplierEmail,
                 SupplierPhoneNums = userInput.SuplierPhoneNums
             };
@@ -251,7 +246,7 @@ namespace OnlineShopping.Controllers
                     SupplierId = newSupplier.SupplierId,
                     SupplierName = newSupplier.SupplierName,
                     SupplierAddress = newAddress.ToString(),
-                    SupplierImage = _firebaseService.GetDownloadUrl(newSupplier.SupplierImage),
+                    SupplierImage = await _dropboxService.GetDownloadLinkAsync(newSupplier.SupplierImage),
                     SupplierEmail = newSupplier.SupplierEmail,
                     SupplierPhoneNums = newSupplier.SupplierPhoneNums                   
                 };
@@ -277,7 +272,7 @@ namespace OnlineShopping.Controllers
             supplierAddress.District = userInput.District;
             supplierAddress.Provine = userInput.Provine;        
             supplierExist.SupplierName = userInput.SupplierName;
-            supplierExist.SupplierImage = _firebaseService.UploadFile(userInput.SuplierImage);
+            supplierExist.SupplierImage = await _dropboxService.UploadAsync(userInput.SuplierImage);
             supplierExist.SupplierEmail = userInput.SuplierEmail;
             supplierExist.SupplierPhoneNums = userInput.SuplierPhoneNums;
 
@@ -400,8 +395,8 @@ namespace OnlineShopping.Controllers
                         {
                             FurnitureSpecificationId = newFurnitureSpecification.FurnitureSpecificationId,
                             AttachmentName = file.FileName,
-                            Path = _firebaseService.UploadFile(file),
-                            Type = _firebaseService.ImageOrVideo(file)
+                            Path = await _dropboxService.UploadAsync(file),
+                            Type = _dropboxService.ImageOrVideo(file)
                         };
                         await _dbContext.AddAsync(newAttachment);
                     }            
@@ -429,9 +424,9 @@ namespace OnlineShopping.Controllers
                     Price = newFurnitureSpecification.Price,
                     Description = newFurnitureSpecification.Description,
                     Images = newFurnitureSpecification.Attachments.IsNullOrEmpty() ? new string[] { } : 
-                        newFurnitureSpecification.Attachments.Where(a => a.Type.Equals("images")).Select(a => _firebaseService.GetDownloadUrl(a.Path)),
+                        newFurnitureSpecification.Attachments.Where( a => a.Type.Equals("images")).Select(  a =>  _dropboxService.GetDownloadLinkAsync(a.Path).Result),
                     Videos = newFurnitureSpecification.Attachments.IsNullOrEmpty() ? new string[] {} :
-                        newFurnitureSpecification.Attachments.Where(a => a.Type.Equals("videos")).Select(a => _firebaseService.GetDownloadUrl(a.Path))
+                        newFurnitureSpecification.Attachments.Where( a => a.Type.Equals("videos")).Select( a =>  _dropboxService.GetDownloadLinkAsync(a.Path).Result)
                 });
             }
             catch
@@ -514,7 +509,7 @@ namespace OnlineShopping.Controllers
             {
                 foreach (var attachment in furnitureSpecificationExist.Attachments)
                 {
-                    if(_firebaseService.RemoveFile(attachment.Path)) _dbContext.Remove(attachment);
+                    if(await _dropboxService.DeleteFileAsync(attachment.Path)) _dbContext.Remove(attachment);
                 };
                 await _dbContext.SaveChangesAsync();
                 foreach (var file in userInput.UploadFiles)
@@ -524,8 +519,8 @@ namespace OnlineShopping.Controllers
                     {
                         FurnitureSpecificationId = furnitureSpecificationExist.FurnitureSpecificationId,
                         AttachmentName = file.FileName,
-                        Path = _firebaseService.UploadFile(file),
-                        Type = _firebaseService.ImageOrVideo(file)
+                        Path = await _dropboxService.UploadAsync(file),
+                        Type = _dropboxService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newAttachment);
                 }
@@ -572,7 +567,7 @@ namespace OnlineShopping.Controllers
                
                 foreach (var file in furnitureSpecification.Attachments)
                 {
-                    _firebaseService.RemoveFile(file.Path);
+                    await _dropboxService.DeleteFileAsync(file.Path);
                 }
 
             }

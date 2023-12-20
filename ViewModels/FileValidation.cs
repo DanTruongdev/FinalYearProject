@@ -28,9 +28,7 @@ namespace OnlineShopping.ViewModels
                 {
                     if (!SUPPORTED_EXTENSION.Contains(Path.GetExtension(file.FileName).ToLower())) return new ValidationResult("File extension is not supported");
                     if (file.Length > 60 * 1024 * 1024) return new ValidationResult("File size must be less than 60MB");
-                }
-              
-                
+                }              
             }
              
             return ValidationResult.Success;

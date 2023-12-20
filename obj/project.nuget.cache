@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "t8yFL4wrFhvvBh8r16zsQVXaFh3eAWxjAmryg0Me4KxRJm65lvSRzZPL5SxgpkM0OUhBLBaaQvUaMIrMQVEqaQ==",
+  "dgSpecHash": "8WdfqB9aCMcLPdXDasPnARuYofRu/BBntIa40EVcYU4GZ1fUDkWqDp5e9ZyL03M8kfiYPlJvnuLPFeiTKo+kkQ==",
   "success": true,
   "projectFilePath": "D:\\FinalYearProject\\Project\\BackEnd\\OnlineShopping\\OnlineShopping.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Dan Truong\\.nuget\\packages\\bogus\\34.0.2\\bogus.34.0.2.nupkg.sha512",
     "C:\\Users\\Dan Truong\\.nuget\\packages\\castle.core\\4.4.1\\castle.core.4.4.1.nupkg.sha512",
+    "C:\\Users\\Dan Truong\\.nuget\\packages\\dropbox.api\\6.37.0\\dropbox.api.6.37.0.nupkg.sha512",
     "C:\\Users\\Dan Truong\\.nuget\\packages\\google.api.gax\\4.4.0\\google.api.gax.4.4.0.nupkg.sha512",
     "C:\\Users\\Dan Truong\\.nuget\\packages\\google.api.gax.rest\\4.4.0\\google.api.gax.rest.4.4.0.nupkg.sha512",
     "C:\\Users\\Dan Truong\\.nuget\\packages\\google.apis\\1.60.0\\google.apis.1.60.0.nupkg.sha512",

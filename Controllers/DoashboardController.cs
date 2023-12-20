@@ -122,7 +122,7 @@ namespace OnlineShopping.Controllers
            
             var orderStatus = new
             {
-                Processing = orders.Where(o => o.Status.Equals("Processing")).Count(),
+                Pending = orders.Where(o => o.Status.Equals("Pending")).Count(),
                 Preparing = orders.Where(o => o.Status.Equals("Preparing")).Count(),
                 Delivering = orders.Where(o => o.Status.Equals("Delivering")).Count(),
                 Delivered = orders.Where(o => o.Status.Equals("Delivered")).Count(),
@@ -135,7 +135,6 @@ namespace OnlineShopping.Controllers
                 furnitureImportTimeAnnually = furnitureImportTimeList,
                 TopSupplier = supplierPercents,
                 orderStatus = orderStatus
-
             };
             return Ok(response);
         }

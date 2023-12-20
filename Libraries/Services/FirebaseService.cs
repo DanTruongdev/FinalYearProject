@@ -21,15 +21,6 @@ namespace OnlineShopping.Libraries.Services
         GoogleCredential googleCredential;
         StorageClient storage;
 
-
-        public bool CheckFileExtension(List<IFormFile> files)
-        {
-            foreach (IFormFile file in files)
-            {
-                if (ImageOrVideo(file).IsNullOrEmpty()) return false;
-            }
-            return true;
-        }
         public FirebaseService(FirebaseConfiguration firebaseConfiguration)
         {
             _firebaseConfiguration = firebaseConfiguration;
@@ -52,6 +43,15 @@ namespace OnlineShopping.Libraries.Services
             storage = StorageClient.Create(googleCredential);
 
         }
+        public bool CheckFileExtension(List<IFormFile> files)
+        {
+            foreach (IFormFile file in files)
+            {
+                if (ImageOrVideo(file).IsNullOrEmpty()) return false;
+            }
+            return true;
+        }
+        
       
         public bool CheckFileExtension(IFormFile file)
         {

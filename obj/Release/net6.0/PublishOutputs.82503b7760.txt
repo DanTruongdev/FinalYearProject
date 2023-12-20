@@ -6,6 +6,7 @@ D:\FinalYearProject\Project\BackEnd\OnlineShopping\obj\Release\net6.0\PubTmp\Out
 D:\FinalYearProject\Project\BackEnd\OnlineShopping\obj\Release\net6.0\PubTmp\Out\OnlineShopping.pdb
 D:\FinalYearProject\Project\BackEnd\OnlineShopping\obj\Release\net6.0\PubTmp\Out\Bogus.dll
 D:\FinalYearProject\Project\BackEnd\OnlineShopping\obj\Release\net6.0\PubTmp\Out\Castle.Core.dll
+D:\FinalYearProject\Project\BackEnd\OnlineShopping\obj\Release\net6.0\PubTmp\Out\Dropbox.Api.dll
 D:\FinalYearProject\Project\BackEnd\OnlineShopping\obj\Release\net6.0\PubTmp\Out\Google.Api.Gax.dll
 D:\FinalYearProject\Project\BackEnd\OnlineShopping\obj\Release\net6.0\PubTmp\Out\Google.Api.Gax.Rest.dll
 D:\FinalYearProject\Project\BackEnd\OnlineShopping\obj\Release\net6.0\PubTmp\Out\Google.Apis.dll

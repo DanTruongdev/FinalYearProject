@@ -30,48 +30,36 @@ namespace OnlineShopping.Controllers
     {
         private readonly ApplicationDbContext _dbContext;
         private readonly UserManager<User> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly SignInManager<User> _signInManager;
         private readonly IConfiguration _config;
-        private readonly IEmailService _emailService;
-        private readonly ISMSService _smsService;
-        private readonly IFirebaseService _firebaseService;
         private readonly IProjectHelper _projectHelper;
-        public CustomerController(ApplicationDbContext context, UserManager<User> userManager, RoleManager<IdentityRole> userRole,
-            SignInManager<User> signInManager, IConfiguration config, IEmailService emailService, ISMSService smsService, IFirebaseService firebaseService, IProjectHelper projectHelper)
+        private readonly IDropboxService _dropboxService;
+        public CustomerController(ApplicationDbContext context, UserManager<User> userManager, IConfiguration config, IProjectHelper projectHelper, IDropboxService dropboxService)
         {
             _dbContext = context;
             _userManager = userManager;
-            _roleManager = userRole;
-            _signInManager = signInManager;
             _config = config;
-            _emailService = emailService;
-            _smsService = smsService;
-            _firebaseService = firebaseService;
             _projectHelper = projectHelper;
+            _dropboxService = dropboxService;
         }
 
- 
+
 
         //FURNITURE
         [HttpGet("furnitures")]
-        
         public async Task<IActionResult> GetAllFurniture()
         {
             bool isLoggedIn = false;
-            bool isWishlistEmpty = false;
-            ICollection<WishListDetail> wishlist = new List<WishListDetail>();
+            ICollection<WishListDetail> userWishlist = new List<WishListDetail>();
             var email = User.FindFirstValue(ClaimTypes.Email);
             var loggedInUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.Equals(email));
             if (loggedInUser != null) isLoggedIn = true;
             if (isLoggedIn)
             {
-                wishlist = loggedInUser.WishList.WishListDetails;
-                isWishlistEmpty = wishlist.IsNullOrEmpty() ? true : false;
+                userWishlist = loggedInUser.WishList == null ? new List<WishListDetail>() : loggedInUser.WishList.WishListDetails.ToList();
             }
 
             var furnitures = await _dbContext.Furnitures.ToListAsync();
-            var response = furnitures.Select(f => new
+            var response = furnitures.Select( f => new
             {
                 FurnitureId = f.FurnitureId,
                 FurnitureName = f.FurnitureName,
@@ -84,11 +72,11 @@ namespace OnlineShopping.Controllers
                 AppropriateRoom = f.AppopriateRoom,
                 Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
                 Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
-                        _firebaseService.GetDownloadUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
+                         _dropboxService.GetDownloadLinkAsync(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path).Result
                         : String.Empty,
                 CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
                 Collection = f.Collection.CollectionName,
-                isLike = isLoggedIn && !isWishlistEmpty && wishlist.FirstOrDefault(w => w.FurnitureId == f.FurnitureId) != null ? true : false
+                isLike = isLoggedIn && userWishlist.FirstOrDefault(w => w.FurnitureId == f.FurnitureId) != null ? true : false
             });
 
             return Ok(response);
@@ -96,7 +84,7 @@ namespace OnlineShopping.Controllers
 
 
         [HttpGet("furnitures/{id}")]
-        
+
         public async Task<IActionResult> GetFurnitureSpecificationById(int id)
         {
             var furnitureSpecifications = await _dbContext.FurnitureSpecifications.Where(fs => fs.FurnitureId == id).ToListAsync();
@@ -124,15 +112,15 @@ namespace OnlineShopping.Controllers
                     Description = fs.Description,
                     Available = _dbContext.FurnitureRepositories.FirstOrDefault(fr => fr.RepositoryId == 1 && fr.FurnitureSpecificationId == fs.FurnitureSpecificationId) == null ? 0 :
                                 _dbContext.FurnitureRepositories.FirstOrDefault(fr => fr.RepositoryId == 1 && fr.FurnitureSpecificationId == fs.FurnitureSpecificationId).Available,
-                    Images = fs.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
+                    Images = fs.Attachments.Where(a => a.Type.Equals("images")).Select( a => new
                     {
                         AttachmentName = a.AttachmentName,
-                        Path = _firebaseService.GetDownloadUrl(a.Path)
+                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                     }),
-                    Videos = fs.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
+                    Videos = fs.Attachments.Where(a => a.Type.Equals("videos")).Select( a => new
                     {
                         AttachmentName = a.AttachmentName,
-                        Path = _firebaseService.GetDownloadUrl(a.Path)
+                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                     }),
                     Feedbacks = fs.Feedbacks.Select(fb => new
                     {
@@ -148,7 +136,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpGet("furnitures/search")]
-        
+
         public async Task<IActionResult> SearchFurnitureF(string keyword)
         {
             if (!keyword.IsNullOrEmpty()) keyword = keyword.ToUpper().Trim();
@@ -167,7 +155,7 @@ namespace OnlineShopping.Controllers
                 AppropriateRoom = f.AppopriateRoom,
                 Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
                 Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
-                        _firebaseService.GetDownloadUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
+                          _dropboxService.GetDownloadLinkAsync(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path).Result
                         : String.Empty,
                 CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
                 Collection = f.Collection.CollectionName
@@ -176,7 +164,7 @@ namespace OnlineShopping.Controllers
         }
 
         [HttpGet("furnitures/filter")]
-        
+
         public async Task<IActionResult> FurnitureFilter([FromQuery] FurnitureFilterViewModel filter)
         {
             filter.MaxCost = filter.MaxCost == 0 ? double.MaxValue : filter.MaxCost;
@@ -186,7 +174,7 @@ namespace OnlineShopping.Controllers
             if (!filter.AppropriateRoom.IsNullOrEmpty()) funituresSpecifications = funituresSpecifications.Where(fs => fs.Furniture.AppopriateRoom.Equals(filter.AppropriateRoom)).ToList();
             if (!filter.Collection.IsNullOrEmpty()) funituresSpecifications = funituresSpecifications.Where(fs => fs.Furniture.Collection.Equals(filter.Collection)).ToList();
             var furnitures = funituresSpecifications.GroupBy(fs => fs.Furniture).Select(gr => gr.Key).ToList();
-            var response = furnitures.Select(f => new
+            var response = furnitures.Select( f => new
             {
                 FurnitureId = f.FurnitureId,
                 FurnitureName = f.FurnitureName,
@@ -199,7 +187,7 @@ namespace OnlineShopping.Controllers
                 AppropriateRoom = f.AppopriateRoom,
                 Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
                 Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
-                        _firebaseService.GetDownloadUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
+                          _dropboxService.GetDownloadLinkAsync(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path).Result
                         : String.Empty,
                 CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
                 Collection = f.Collection.CollectionName
@@ -320,7 +308,7 @@ namespace OnlineShopping.Controllers
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Logged in user not found ");
             var user = await _userManager.FindByEmailAsync(email);
-            var announcement = user.Announcements.OrderByDescending(a => a.CreationDate).Take(10).Select(a => new
+            var announcement = user.Announcements.OrderByDescending(a => a.CreationDate).Select(a => new
             {
                 Title = a.Title,
                 Content = a.Content,
@@ -356,7 +344,7 @@ namespace OnlineShopping.Controllers
             var wishList = loggedInUser.WishList.WishListDetails;
             if (wishList.IsNullOrEmpty()) return Ok(new List<WishListDetail>());
             var furnitures = wishList.Select(w => w.Furniture);
-            var response = furnitures.Select(f => new
+            var response = furnitures.Select( f => new
             {
                 FurnitureId = f.FurnitureId,
                 FurnitureName = f.FurnitureName,
@@ -369,7 +357,7 @@ namespace OnlineShopping.Controllers
                 AppropriateRoom = f.AppopriateRoom,
                 Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
                 Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
-                        _firebaseService.GetDownloadUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
+                         _dropboxService.GetDownloadLinkAsync(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path).Result
                         : String.Empty,
                 CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
                 Collection = f.Collection.CollectionName
@@ -441,7 +429,7 @@ namespace OnlineShopping.Controllers
                 FurnitureName = orderFurniture.Furniture.FurnitureName,
                 FurnitureSpecificationId = furnitureSpecificationId,
                 FurnitureSpecificationName = orderFurniture.FurnitureSpecificationName,
-                FurnitureSpecificationImage = orderFurniture.Attachments.IsNullOrEmpty() ? "" : _firebaseService.GetDownloadUrl(orderFurniture.Attachments.First().Path),
+                FurnitureSpecificationImage = orderFurniture.Attachments.IsNullOrEmpty() ? "" : await _dropboxService.GetDownloadLinkAsync(orderFurniture.Attachments.First().Path),
                 Quantity = Quantity,
 
                 TotalCost = Math.Round(orderFurniture.Price * Quantity, 2)
@@ -610,9 +598,10 @@ namespace OnlineShopping.Controllers
                 await _dbContext.SaveChangesAsync();
                 if (model.UsedPoint != 0)
                 {
-                    await _projectHelper.CreatePointHistoryAsync(loggedInUser, -1 * model.UsedPoint, $"Use in order with id = {newOrder.OrderId}");
                     loggedInUser.Point -= model.UsedPoint;
+                    await _projectHelper.CreatePointHistoryAsync(loggedInUser, -1 * model.UsedPoint, $"Use in order with id = {newOrder.OrderId}");                  
                     _dbContext.Update(loggedInUser);
+                    await _dbContext.SaveChangesAsync();
                 }
 
                 if (isCustomizeFurnitureOrder)
@@ -668,7 +657,7 @@ namespace OnlineShopping.Controllers
 
         [HttpPost("repayment/{orderId}")]
         [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> Repayment([FromRoute] int orderId) 
+        public async Task<IActionResult> Repayment([FromRoute] int orderId)
         {
             var order = await _dbContext.Orders.FindAsync(orderId);
             if (order == null) return NotFound(new Response("Error", $"The order with id = {orderId} was not found"));
@@ -814,14 +803,14 @@ namespace OnlineShopping.Controllers
                     bool isValid = false;
                     var isCustomOrder = order.CustomizeFurnitureOrderDetails.IsNullOrEmpty() ? false : true;
                     if (isCustomOrder)
-                    {                       
-                        isValid = !order.Status.Equals("Pending") && DateTime.Now < order.OrderDate.AddMinutes(10) ? true : false;
+                    {
+                        isValid = order.Status.Equals("Pending") && order.OrderDate.AddMinutes(10) < DateTime.Now  ? false : true;
                     }
                     else
                     {
                         isValid = (order.Status.Equals("Pending") && order.Payment.PaymentId != 1 && DateTime.Now > order.OrderDate.AddMinutes(10)) ? false : true;
                     }
-                    
+
                     if (!isValid)
                     {
                         order.Status = "Canceled";
@@ -868,7 +857,7 @@ namespace OnlineShopping.Controllers
                         Note = order.Note,
                         IsPaid = order.IsPaid,
                         isCustomOrder = order.CustomizeFurnitureOrderDetails.IsNullOrEmpty() ? false : true,
-                        
+
                     };
                     response.Add(data);
                 }
@@ -885,15 +874,16 @@ namespace OnlineShopping.Controllers
             if (email == null) return NotFound("Logged in user not found ");
             var loggedInUser = await _userManager.FindByEmailAsync(email);
             if (loggedInUser.Feedbacks.IsNullOrEmpty()) return Ok(new List<Feedback>());
-            var responses = loggedInUser.Feedbacks.Select(fb => new
+
+            var responses = loggedInUser.Feedbacks.OrderByDescending(f => f.CreationDate).Select(fb => new
             {
                 FeedbackId = fb.FeedbackId,
                 OrderId = fb.OrderId,
                 FurnitureId = fb.FurnitureSpecification.Furniture.FurnitureId,
                 FurnitureName = fb.FurnitureSpecification.Furniture.FurnitureName,
-                FeedbackImages = fb.Attachements.Count > 0 ? fb.Attachements.Select(a => new
+                FeedbackImages = fb.Attachements.Count > 0 ? fb.Attachements.Select( a => new
                 {
-                    url = _firebaseService.GetDownloadUrl(a.Path),
+                    url =  _dropboxService.GetDownloadLinkAsync(a.Path).Result,
                     type = a.Type
                 }) : null,
                 Content = fb.Content,
@@ -984,8 +974,8 @@ namespace OnlineShopping.Controllers
                     {
                         FeedbackId = addedFeedback.FeedbackId,
                         AttachmentName = file.FileName,
-                        Path = _firebaseService.UploadFile(file),
-                        Type = _firebaseService.ImageOrVideo(file)
+                        Path = await _dropboxService.UploadAsync(file),
+                        Type = _dropboxService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newFeedbackAttachment);
                 }
@@ -1055,7 +1045,7 @@ namespace OnlineShopping.Controllers
                 {
                     foreach (var attachment in feedbackExist.Attachements)
                     {
-                        _firebaseService.RemoveFile(attachment.Path);
+                        await _dropboxService.DeleteFileAsync(attachment.Path);
                         _dbContext.Remove(attachment);
                     }
                     await _dbContext.SaveChangesAsync();
@@ -1067,8 +1057,8 @@ namespace OnlineShopping.Controllers
                     {
                         FeedbackId = feedbackExist.FeedbackId,
                         AttachmentName = file.FileName,
-                        Path = _firebaseService.UploadFile(file),
-                        Type = _firebaseService.ImageOrVideo(file)
+                        Path = await _dropboxService.UploadAsync(file),
+                        Type = _dropboxService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newFeedbackAttachment);
                 }
@@ -1099,7 +1089,7 @@ namespace OnlineShopping.Controllers
             var loggedInUser = await _dbContext.Users.Include(u => u.Cart).FirstOrDefaultAsync(u => u.Email.Equals(email));
             List<CustomizeFurniture> customizeFurnitures = new List<CustomizeFurniture>();
             if (status.Equals("All")) customizeFurnitures = loggedInUser.CustomizeFurnitures.ToList();
-            else customizeFurnitures = loggedInUser.CustomizeFurnitures.Where(cf => cf.Result.Status.Equals(status)).ToList();
+            else customizeFurnitures = loggedInUser.CustomizeFurnitures.OrderByDescending(cf => cf.CreationDate).Where(cf => cf.Result.Status.Equals(status)).ToList();
             if (customizeFurnitures.Count == 0) return NotFound($"There is no customize furniture with {status} status");
             try
             {
@@ -1118,15 +1108,15 @@ namespace OnlineShopping.Controllers
                     Quantity = cf.Quantity,
                     DesiredCompletionDate = cf.DesiredCompletionDate,
                     CreationDate = cf.CreationDate,
-                    Images = cf.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
+                    Images = cf.Attachments.Where(a => a.Type.Equals("images")).Select( a => new
                     {
                         AttachmentName = a.AttachmentName,
-                        Path = _firebaseService.GetDownloadUrl(a.Path)
+                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                     }),
-                    Videos = cf.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
+                    Videos = cf.Attachments.Where(a => a.Type.Equals("videos")).Select( a => new
                     {
                         AttachmentName = a.AttachmentName,
-                        Path = _firebaseService.GetDownloadUrl(a.Path)
+                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                     }),
                     Result = new
                     {
@@ -1172,7 +1162,7 @@ namespace OnlineShopping.Controllers
                 Length = userInput.Length,
                 WoodId = userInput.WoodId,
                 Quantity = userInput.Quantity,
-                Description = userInput.Description,
+                Description = _projectHelper.FilterBadWords(userInput.Description),
                 DesiredCompletionDate = userInput.DesiredCompletionDate,
                 CreationDate = DateTime.Now
             };
@@ -1194,8 +1184,8 @@ namespace OnlineShopping.Controllers
                     {
                         CustomizeFurnitureId = newCustomizeFurniture.CustomizeFurnitureId,
                         AttachmentName = file.FileName,
-                        Path = _firebaseService.UploadFile(file),
-                        Type = _firebaseService.ImageOrVideo(file)
+                        Path = await _dropboxService.UploadAsync(file),
+                        Type = _dropboxService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newAttachment);
                 }
@@ -1232,7 +1222,7 @@ namespace OnlineShopping.Controllers
             {
                 foreach (var attachment in customizeFurniture.Attachments)
                 {
-                    bool removeResult = _firebaseService.RemoveFile(attachment.Path);
+                    bool removeResult = await _dropboxService.DeleteFileAsync(attachment.Path);
                     if (removeResult) _dbContext.Remove(attachment);
                 };
                 await _dbContext.SaveChangesAsync();
@@ -1243,8 +1233,8 @@ namespace OnlineShopping.Controllers
                     {
                         CustomizeFurnitureId = customizeFurniture.CustomizeFurnitureId,
                         AttachmentName = file.FileName,
-                        Path = _firebaseService.UploadFile(file),
-                        Type = _firebaseService.ImageOrVideo(file)
+                        Path = await _dropboxService.UploadAsync(file),
+                        Type = _dropboxService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newAttachment);
                 }
@@ -1310,15 +1300,15 @@ namespace OnlineShopping.Controllers
                 EstimatedTime = w.EstimatedTime.HasValue ? String.Format("{0:yyyy/MM/dd}", w.EstimatedTime) : "Processing",
                 Attacments = new
                 {
-                    Images = w.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
+                    Images = w.Attachments.Where(a => a.Type.Equals("images")).Select( a => new
                     {
                         FileName = a.AttachmentName,
-                        Path = _firebaseService.GetDownloadUrl(a.Path)
+                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                     }),
-                    Videos = w.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
+                    Videos = w.Attachments.Where(a => a.Type.Equals("videos")).Select( a => new
                     {
                         FileName = a.AttachmentName,
-                        Path = _firebaseService.GetDownloadUrl(a.Path)
+                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                     })
                 },
                 Status = w.Status
@@ -1365,8 +1355,8 @@ namespace OnlineShopping.Controllers
                     {
                         WarrantyId = newWarranty.WarrantyId,
                         AttachmentName = file.FileName,
-                        Path = _firebaseService.UploadFile(file),
-                        Type = _firebaseService.ImageOrVideo(file)
+                        Path = await _dropboxService.UploadAsync(file),
+                        Type = _dropboxService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newAttachment);
                 }
@@ -1397,7 +1387,7 @@ namespace OnlineShopping.Controllers
                 {
                     foreach (var attachment in editWarranty.Attachments)
                     {
-                        var removeResult = _firebaseService.RemoveFile(attachment.Path);
+                        var removeResult = await _dropboxService.DeleteFileAsync(attachment.Path);
                         if (removeResult) _dbContext.Remove(attachment);
                     };
                 }
@@ -1408,8 +1398,8 @@ namespace OnlineShopping.Controllers
                     {
                         WarrantyId = editWarranty.WarrantyId,
                         AttachmentName = file.FileName,
-                        Path = _firebaseService.UploadFile(file),
-                        Type = _firebaseService.ImageOrVideo(file)
+                        Path = await _dropboxService.UploadAsync(file),
+                        Type = _dropboxService.ImageOrVideo(file)
                     };
                     _dbContext.Update(newAttachment);
                 }
@@ -1436,7 +1426,7 @@ namespace OnlineShopping.Controllers
                 {
                     foreach (var attachment in removeWarranty.Attachments)
                     {
-                        var removeResult = _firebaseService.RemoveFile(attachment.Path);
+                        var removeResult = await _dropboxService.DeleteFileAsync(attachment.Path);
                         _dbContext.Remove(attachment);
                     };
                     removeWarranty.Attachments.Clear();

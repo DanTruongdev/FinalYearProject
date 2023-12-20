@@ -25,19 +25,19 @@ namespace OnlineShopping.Controllers
         private readonly ApplicationDbContext _dbContext;
         private readonly UserManager<User> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly IFirebaseService _firebaseService;
+        private readonly IDropboxService _dropboxService;
         private readonly ISMSService _smsService;
         private readonly IProjectHelper _projectHelper;
         private readonly IEmailService _emailService;
 
 
-        public UserController(ApplicationDbContext dbContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager, IFirebaseService firebaseService, ISMSService smsService,
+        public UserController(ApplicationDbContext dbContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager, IDropboxService dropboxService, ISMSService smsService,
             IProjectHelper projectHelper, IEmailService emailService)
         {
             _dbContext = dbContext;
             _userManager = userManager;
             _roleManager = roleManager;
-            _firebaseService = firebaseService;
+            _dropboxService = dropboxService;
             _smsService = smsService;
             _projectHelper = projectHelper;
             _emailService = emailService;
@@ -64,7 +64,7 @@ namespace OnlineShopping.Controllers
                 PhoneNumberConfirmed = u.PhoneNumberConfirmed,
                 Email = u.Email,
                 EmailConfirmed = u.EmailConfirmed,
-                Avatar = _firebaseService.GetDownloadUrl(u.Avatar),
+                Avatar = _dropboxService.GetDownloadLinkAsync(u.Avatar).Result,
                 CreationDate = u.CreationDate,
                 LatestUpdate = u.LatestUpdate,
                 IsActivated = u.IsActivated,
@@ -101,7 +101,7 @@ namespace OnlineShopping.Controllers
                 Role = _userManager.GetRolesAsync(d).Result.FirstOrDefault(),
                 PhoneNumber = d.PhoneNumber,
                 Email = d.Email,
-                Avatar = _firebaseService.GetDownloadUrl(d.Avatar),
+                Avatar = _dropboxService.GetDownloadLinkAsync(d.Avatar).Result,
                 CreationDate = d.CreationDate,
                 IsActivated = d.IsActivated,
                 TwoFactorEnabled = d.IsActivated,
@@ -133,7 +133,7 @@ namespace OnlineShopping.Controllers
                 PhoneNumberConfirmed = loggedInUser.PhoneNumberConfirmed,
                 Email = loggedInUser.Email,
                 EmailConfirmed = loggedInUser.EmailConfirmed,
-                Avatar = _firebaseService.GetDownloadUrl(loggedInUser.Avatar),
+                Avatar = await _dropboxService.GetDownloadLinkAsync(loggedInUser.Avatar),
                 CreationDate = loggedInUser.CreationDate,
                 LatestUpdate = loggedInUser.LatestUpdate,
                 IsActivated = loggedInUser.IsActivated,
@@ -162,10 +162,10 @@ namespace OnlineShopping.Controllers
             if (userInput.Image != null)
             {
                 bool isRemoved = true;
-                if (loggedInUser.Avatar != null) isRemoved = _firebaseService.RemoveFile(loggedInUser.Avatar);
+                if (loggedInUser.Avatar != null) isRemoved = await _dropboxService.DeleteFileAsync(loggedInUser.Avatar);
                 if (!isRemoved) return StatusCode(StatusCodes.Status500InternalServerError,
                     new Response("Error", "An error occurs when  uploading file"));
-                loggedInUser.Avatar = _firebaseService.UploadFile(userInput.Image);
+                loggedInUser.Avatar = await _dropboxService.UploadAsync(userInput.Image);
             }
             try
             {
@@ -197,11 +197,9 @@ namespace OnlineShopping.Controllers
 
             if (userInput.Image != null)
             {
-                bool isRemoved = true;
-                if (userExist.Avatar != null) isRemoved = _firebaseService.RemoveFile(userExist.Avatar);
-                if (!isRemoved) return StatusCode(StatusCodes.Status500InternalServerError,
-                    new Response("Error", "An error occurs when  uploading file"));
-                userExist.Avatar = _firebaseService.UploadFile(userInput.Image);
+            
+                if (userExist.Avatar != null) await _dropboxService.DeleteFileAsync(userExist.Avatar);
+                userExist.Avatar = await _dropboxService.UploadAsync(userInput.Image);
             }
             try
             {
@@ -412,7 +410,7 @@ namespace OnlineShopping.Controllers
 
                                                                                             //ADDRESS
         //VIEW
-         [Authorize(Roles = "CUSTOMER")]
+        [Authorize(Roles = "CUSTOMER")]
         [HttpGet("customer-infor/address")]
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> GetCustomerAddress()

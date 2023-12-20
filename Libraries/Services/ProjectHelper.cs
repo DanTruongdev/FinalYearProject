@@ -375,7 +375,7 @@ namespace OnlineShopping.Libraries.Services
         {
             try
             {
-                string subDesciption = point < 0 ? $"{point}" : $"+{point}";
+                string subDesciption = point < 0 ? $"-{point}" : $"+{point}";
                 var newPointHistory = new PointHistory()
                 {
                     CustomerId = user.Id,

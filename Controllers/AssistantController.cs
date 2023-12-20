@@ -26,28 +26,33 @@ namespace OnlineShopping.Controllers
     [ApiController]
     public class AssistantController : ControllerBase
     {
-        private readonly IHubContext<SignalHub> _hubContext;
         private readonly ApplicationDbContext _dbContext;
         private readonly UserManager<User> _userManager;
-        private readonly ISMSService _smsService;
-        private readonly IEmailService _emailService;
-        private readonly IFirebaseService _firebaseService;
+ 
         private readonly IProjectHelper _projectHelper;
-        public AssistantController(IHubContext<SignalHub> hubContext, ApplicationDbContext dbContext, ISMSService smsService, IEmailService emailService, 
-            UserManager<User> userManager, IFirebaseService firebaseService, IProjectHelper projectHelper)
+        private readonly IDropboxService _dropboxService;
+
+        public AssistantController( ApplicationDbContext dbContext, UserManager<User> userManager, IProjectHelper projectHelper, IDropboxService dropboxService)
         {
-            _hubContext = hubContext;
             _dbContext = dbContext;
-            _smsService = smsService;
-            _emailService = emailService;
             _userManager = userManager;
-            _firebaseService = firebaseService;
             _projectHelper = projectHelper;
+            _dropboxService = dropboxService;
         }
 
 
 
+        [HttpPost("upload")]
+        public async Task<IActionResult> Upload([FromForm]List<IFormFile> files)
+        {
+            foreach (var file in files)
+            {
+                return Ok(await _dropboxService.UploadAsync(file));
+            }
+            return Ok();
 
+
+        }
 
         //wood
 
@@ -155,9 +160,9 @@ namespace OnlineShopping.Controllers
             }).ToList();
             return Ok(response);
         }
-        [Authorize(Roles = "ASSISTANT")]
+
+
         //label
- 
         [HttpGet("shop-data/labels")]
         public async Task<IActionResult> GetLabel()
         {
@@ -381,12 +386,12 @@ namespace OnlineShopping.Controllers
             searchString = searchString.IsNullOrEmpty() ? String.Empty : searchString.Trim().ToUpper();
             var result = await _dbContext.Materials.Where(f => f.MaterialName.ToUpper().Contains(searchString)).ToListAsync();
             if (result.IsNullOrEmpty()) return Ok(new List<Material>());
-            var response = result.Select(m => new
+            var response = result.Select( m => new
             {
                 MaterialId = m.MaterialId,
                 MaterialName = m.MaterialName,
                 MaterialPrice = m.MaterialPrice,
-                MaterialImage = _firebaseService.GetDownloadUrl(m.MaterialImage),
+                MaterialImage =  _dropboxService.GetDownloadLinkAsync(m.MaterialImage).Result,
                 Description = m.Description,
                 DefaultSuplierId = m.DefaultSuplierId,
                 Available = m.MaterialRepositories.Select(mr => new
@@ -404,12 +409,12 @@ namespace OnlineShopping.Controllers
         public async Task<IActionResult> GetMaterial() 
         {
             var materials = await _dbContext.Materials.ToListAsync();
-            var response = materials.Select(m => new
+            var response = materials.Select( m => new
             {
                 MaterialId = m.MaterialId,
                 MaterialName = m.MaterialName,
                 MaterialPrice = m.MaterialPrice,
-                MaterialImage = _firebaseService.GetDownloadUrl(m.MaterialImage),
+                MaterialImage =  _dropboxService.GetDownloadLinkAsync(m.MaterialImage).Result,
                 Description = m.Description,
                 DefaultSuplierId = m.DefaultSuplierId,
                 Available = m.MaterialRepositories.Select(mr => new
@@ -440,7 +445,7 @@ namespace OnlineShopping.Controllers
                 MaterialPrice = userInput.MaterialPrice,
                 Description = userInput.Description.IsNullOrEmpty() ? "" : userInput.Description,
                 DefaultSuplierId = userInput.DefaultSuplierId,
-                MaterialImage = _firebaseService.UploadFile(userInput.UploadImage)
+                MaterialImage = await _dropboxService.UploadAsync(userInput.UploadImage)
             };
          
            
@@ -456,7 +461,7 @@ namespace OnlineShopping.Controllers
                     MaterialName = newMaterial.MaterialName,
                     MaterialPrice = newMaterial.MaterialPrice,
                     Description = newMaterial.Description,
-                    MaterialImage = _firebaseService.GetDownloadUrl(newMaterial.MaterialImage),
+                    MaterialImage = await _dropboxService.GetDownloadLinkAsync(newMaterial.MaterialImage),
                     DefaultSuplierId = newMaterial.DefaultSuplierId
 
                 });
@@ -496,10 +501,10 @@ namespace OnlineShopping.Controllers
             materialExist.DefaultSuplierId = userInput.DefaultSuplierId.HasValue ? userInput.DefaultSuplierId.Value :  materialExist.DefaultSuplierId;
             if (userInput.UploadImage != null)
             {
-                var removeResult = _firebaseService.RemoveFile(materialExist.MaterialImage);
+                var removeResult = await _dropboxService.DeleteFileAsync(materialExist.MaterialImage);
                 if(!removeResult) return StatusCode(StatusCodes.Status500InternalServerError,
                     new Response("Error", $"An error occur when updating material with id = {materialExist.MaterialId}"));
-                materialExist.MaterialImage = _firebaseService.UploadFile(userInput.UploadImage);
+                materialExist.MaterialImage = await _dropboxService.UploadAsync(userInput.UploadImage);
             }
             try
             {
@@ -521,7 +526,7 @@ namespace OnlineShopping.Controllers
             if (materialExist == null) return NotFound($"The material with id = {materialId} was not found");
             if (!materialExist.MaterialImage.IsNullOrEmpty())
             {
-                var removeResult = _firebaseService.RemoveFile(materialExist.MaterialImage);
+                var removeResult = await _dropboxService.DeleteFileAsync(materialExist.MaterialImage);
 
                 if (!removeResult) return StatusCode(StatusCodes.Status500InternalServerError,
                     new Response("Error", $"An error occur when removing material with id = {materialId}"));
@@ -548,9 +553,9 @@ namespace OnlineShopping.Controllers
         [HttpGet("warehouse/material/imports")]
         public async Task<IActionResult> GetImports()
         {
-            var imports = await _dbContext.Imports.ToListAsync();
+            var imports = await _dbContext.Imports.OrderByDescending(i => i.CreationDate).ToListAsync();
             if (imports.Count < 0) return NotFound("There are not any import orders");
-            var response = imports.Select(i => new
+            var response = imports.Select( i => new
             {
                 ImportId = i.ImportId,
                 CreatedBy = i.User.ToString(),
@@ -563,7 +568,7 @@ namespace OnlineShopping.Controllers
                     Quantity = item.Quantity,
                     Note = item.Note.IsNullOrEmpty() ? "" : item.Note
                 }),
-                BillImage = _firebaseService.GetDownloadUrl(i.BillImage),
+                BillImage = _dropboxService.GetDownloadLinkAsync(i.BillImage).Result,
                 CreationDate = i.CreationDate,
                 DeliveryDate = i.DeliveryDate,
                 Status = i.Status
@@ -656,7 +661,7 @@ namespace OnlineShopping.Controllers
             if (userInput.DeliveryDate.Date < importExist.CreationDate.Date) return BadRequest(new Response("Error", "Delivery date must be greater than or equal creation date"));
             importExist.DeliveryDate = userInput.DeliveryDate;
             importExist.Status = "Delivered";         
-            importExist.BillImage = _firebaseService.UploadFile(userInput.BillImage);
+            importExist.BillImage = await _dropboxService.UploadAsync(userInput.BillImage);
             List<ImportDetail> importDetails = importExist.ImportDetails.ToList();
             //add material to repository
             foreach(var import in importDetails)
@@ -737,7 +742,7 @@ namespace OnlineShopping.Controllers
         [HttpGet("warehouse/material/import-history/to-csv")]
         public async Task<IActionResult> GetImportMaterialHistoryCSV()
         {
-            var data = await _dbContext.Imports.ToListAsync();
+            var data = await _dbContext.Imports.OrderByDescending(h => h.CreationDate).ToListAsync();
             var csv = new StringBuilder();
             string heading = "ImportId,Import Creator,Creation Date,Delivery Date,Status,Material Name,Supplier Name,Quantity,Cost (Thousand VND),Note";
             csv.AppendLine(heading);
@@ -1390,7 +1395,7 @@ namespace OnlineShopping.Controllers
                 return BadRequest(new Response("Error", "Type of repository history must be \"IMPORT\",  \"EXPORT\",  \"TRANSFER\" or \"ALL\""));
             Repository historyExist = await _dbContext.Repositories.FindAsync(repoId);
             if (historyExist == null) return NotFound(new Response("Error", $"The repository with id = {repoId} was not found"));
-            var data = historyType.Equals("ALL") ? historyExist.MaterialRepositoryHistories.ToList() : historyExist.MaterialRepositoryHistories.Where(h => h.Type.Equals(historyType)).ToList();
+            var data = historyType.Equals("ALL") ? historyExist.MaterialRepositoryHistories.OrderByDescending(m => m.CreationDate).ToList() : historyExist.MaterialRepositoryHistories.OrderByDescending(m => m.CreationDate).Where(h => h.Type.Equals(historyType)).ToList();
             var response = data.Select(d => new
             {
                 MaterialRepositoryHistoryId = d.MaterialRepositoryHistoryId,
@@ -1414,7 +1419,7 @@ namespace OnlineShopping.Controllers
                 return BadRequest(new Response("Error", "Type of repository history must be \"IMPORT\",  \"EXPORT\",  \"TRANSFER\" or \"ALL\""));
             Repository historyExist = await _dbContext.Repositories.FindAsync(repoId);
             if (historyExist == null) return NotFound(new Response("Error", $"The repository with id = {repoId} was not found"));
-            var data = historyType.Equals("ALL") ? historyExist.FurnitureRepositoryHistories.ToList() : historyExist.FurnitureRepositoryHistories.Where(h => h.Type.Equals(historyType)).ToList();
+            var data = historyType.Equals("ALL") ? historyExist.FurnitureRepositoryHistories.OrderByDescending(f => f.CreationDate).ToList() : historyExist.FurnitureRepositoryHistories.OrderByDescending(f => f.CreationDate).Where(h => h.Type.Equals(historyType)).ToList();
             var response = data.Select(d => new
             {
                 FuritureRepositoryHistoryId = d.FurnitureRepositoryHistoryId,
@@ -1436,7 +1441,7 @@ namespace OnlineShopping.Controllers
         [HttpGet("warehouse/repositories/furniture-repository-history/to-csv")]
         public async Task<IActionResult> GetFurnitureRepositoryHistoryCSV()
         {
-            var data = await _dbContext.FurnitureRepositoryHistories.ToListAsync();
+            var data = await _dbContext.FurnitureRepositoryHistories.OrderByDescending(o => o.CreationDate).ToListAsync();
             var csv = new StringBuilder();
             string heading = "RepositoryId,Repository Name,Type,Creator,Furniture Specification Name,Quantity,Description,CreationDate";
             csv.AppendLine(heading);
@@ -1461,7 +1466,7 @@ namespace OnlineShopping.Controllers
         [HttpGet("warehouse/repositories/material-repository-history/to-csv" )]
         public async Task<IActionResult> GetMaterialRepositoryHistoryCSV()
         {
-            var data = await _dbContext.MaterialRepositoryHistories.ToListAsync();
+            var data = await _dbContext.MaterialRepositoryHistories.OrderByDescending(m => m.CreationDate).ToListAsync();
             var csv = new StringBuilder();
             string heading = "RepositoryId,Repository Name,Type,Creator,Material Name,Quantity,Description,CreationDate";
             csv.AppendLine(heading);
@@ -1487,7 +1492,7 @@ namespace OnlineShopping.Controllers
 
 
         //view feedback 
-        [Authorize(Roles = "ASSISTANT")]
+  
         [HttpGet("feedbacks")]
         public async Task<IActionResult> GetAllFeedback()
         {
@@ -1521,7 +1526,7 @@ namespace OnlineShopping.Controllers
                 {                
                     foreach (var attachment in feedbackExist.Attachements)
                     {
-                        _firebaseService.RemoveFile(attachment.Path);
+                        await _dropboxService.DeleteFileAsync(attachment.Path);
                     }
                     feedbackExist.Attachements.Clear();
                 }
@@ -1545,7 +1550,7 @@ namespace OnlineShopping.Controllers
         {
             var furnitureOrder = _dbContext.Orders.OrderByDescending(o => o.OrderDate);
             if (furnitureOrder.Count() == 0) return NotFound("There is no any order");
-          
+            furnitureOrder = furnitureOrder.OrderByDescending(o => o.OrderDate);
             var response = furnitureOrder.Select(o => new
             {
                 OrderId = o.OrderId,
@@ -1586,23 +1591,23 @@ namespace OnlineShopping.Controllers
             if (!statusList.Contains(status)) return BadRequest($"Status must be {statusList[0]}, {statusList[1]}, {statusList[2]}, {statusList[3]} or {statusList[4]}");
             orderExist.Status = status;
             orderExist.IsPaid = true;
-            _projectHelper.CreateAnnouncementAsync(orderExist.Customer, "Order status has been changed", $"Your order is in {status} status");
+            await _projectHelper.CreateAnnouncementAsync(orderExist.Customer, "Order status has been changed", $"Your order is in {status} status");
             try
             {
-               if (status.Equals("Delivered"))
+                if (status.Equals("Delivered"))
                 {
                     var result = await _projectHelper.UpdateCustomerSpentAsync(orderExist);
                     //update sold for furniture
                     if (!orderExist.FurnitureOrderDetails.IsNullOrEmpty())
-                    {
-                        foreach (var item in orderExist.FurnitureOrderDetails)
                         {
-                            var furniture = item.FurnitureSpecification.Furniture;
-                            furniture.Sold += item.Quantity;
-                            _dbContext.Update(furniture);
+                            foreach (var item in orderExist.FurnitureOrderDetails)
+                            {
+                                var furniture = item.FurnitureSpecification.Furniture;
+                                furniture.Sold += item.Quantity;
+                                _dbContext.Update(furniture);
+                            }
                         }
-                    }
-                    if (!result) throw new Exception(); 
+                    if (!result) throw new Exception();
                 }
                 _dbContext.Update(orderExist);
                 await _dbContext.SaveChangesAsync();
@@ -1612,7 +1617,7 @@ namespace OnlineShopping.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError,
                              new Response("Error", $"An error occurs when updating the status of order with id = {orderId}"));
-            }       
+            }
         }
 
         //get all warranties
@@ -1631,15 +1636,15 @@ namespace OnlineShopping.Controllers
                 OrderId = w.OrderId,
                 WarrantyReasons = w.WarrantyReasons,
                 EstimatedTime = w.EstimatedTime.HasValue ? w.EstimatedTime.ToString() : "",
-                Images = w.Attachments.Where(a => a.Type.Equals("images")).Select(a => new
+                Images = w.Attachments.Where(a => a.Type.Equals("images")).Select( a => new
                 {
                     Name = a.AttachmentName,
-                    Path = _firebaseService.GetDownloadUrl(a.Path)
+                    Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                 }),
-                Videos = w.Attachments.Where(a => a.Type.Equals("videos")).Select(a => new
+                Videos = w.Attachments.Where( a => a.Type.Equals("videos")).Select(async a => new
                 {
                     Name = a.AttachmentName,
-                    Path = _firebaseService.GetDownloadUrl(a.Path)
+                    Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
                 })
 
             }) ;
@@ -1647,7 +1652,6 @@ namespace OnlineShopping.Controllers
         }
 
         //CRUD post
-        [Authorize(Roles = "ASSISTANT")]
         [HttpGet("shop-data/posts")]
         public async Task<IActionResult> GetPost([FromQuery]string? type)
         {
@@ -1662,7 +1666,7 @@ namespace OnlineShopping.Controllers
                PostTitle = p.Title,
                PosContent = p.Content,
                PosType = p.Type,
-               PostImage = _firebaseService.GetDownloadUrl(p.Image),
+               PostImage =  _dropboxService.GetDownloadLinkAsync(p.Image).Result,
                CreationDate = p.CreationDate,
                LatestUpdate = p.LatestUpdate == null ? p.CreationDate : p.LatestUpdate
             });
@@ -1684,7 +1688,7 @@ namespace OnlineShopping.Controllers
                 Title = userInput.Title,
                 Content = userInput.Content,
                 Type = userInput.Type,
-                Image = _firebaseService.UploadFile(userInput.Image),
+                Image = await _dropboxService.UploadAsync(userInput.Image),
                 CreationDate = DateTime.Now,
                 LatestUpdate = DateTime.Now
             };
@@ -1699,7 +1703,7 @@ namespace OnlineShopping.Controllers
                     Title = newPost.Title,
                     Content = newPost.Content,
                     Type = newPost.Type,
-                    Image = _firebaseService.GetDownloadUrl(newPost.Image),
+                    Image = await _dropboxService.GetDownloadLinkAsync(newPost.Image),
                     CreationDate = newPost.CreationDate,
                     LatestUpdate = newPost.CreationDate
                 };
@@ -1720,12 +1724,12 @@ namespace OnlineShopping.Controllers
 
             Post postExist = await _dbContext.Posts.FindAsync(postId);
             if (postExist == null) return NotFound(new Response("Error", $"The post with id = {postId} was not found"));
-            if (!userInput.Type.Equals("TIP") || !userInput.Type.Equals("NEW")) return BadRequest(new Response("Error", "Invalid post type. It must be \"TIP\" or \"NEW\""));
+            if (!userInput.Type.Equals("TIP") && !userInput.Type.Equals("NEW")) return BadRequest(new Response("Error", "Invalid post type. It must be \"TIP\" or \"NEW\""));
             
             postExist.Title = userInput.Title;
             postExist.Content = userInput.Content;
             postExist.Type = userInput.Type;
-            postExist.Image = _firebaseService.UploadFile(userInput.Image);
+            postExist.Image = await _dropboxService.UploadAsync(userInput.Image);
             postExist.LatestUpdate = DateTime.Now;
 
             try
@@ -1739,7 +1743,7 @@ namespace OnlineShopping.Controllers
                     Title = postExist.Title,
                     Content = postExist.Content,
                     Type = postExist.Type,
-                    Image = _firebaseService.GetDownloadUrl(postExist.Image),
+                    Image = await _dropboxService.GetDownloadLinkAsync(postExist.Image),
                     CreationDate = postExist.CreationDate,
                     LatestUpdate = postExist.LatestUpdate
                 };
