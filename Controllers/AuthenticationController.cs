@@ -36,12 +36,12 @@ namespace OnlineShopping.Controllers
         private readonly IConfiguration _config;
         private readonly IEmailService _emailService;
         private readonly ISMSService _smsService;
-        private readonly IFirebaseService _firebaseService;
+        private readonly ICloudinaryService _cloudinaryService;
         private readonly IProjectHelper _projectHelper;
         private readonly IHubContext<SignalHub> _hubContext;
 
         public AuthenticationController(ApplicationDbContext dbContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager, SignInManager<User> signInManager,
-            IConfiguration config, IEmailService emailService, ISMSService smsService, IFirebaseService firebaseService, IProjectHelper projectHelper, IHubContext<SignalHub> hubContext)
+            IConfiguration config, IEmailService emailService, ISMSService smsService, ICloudinaryService cloudinaryService, IProjectHelper projectHelper, IHubContext<SignalHub> hubContext)
         {
             _dbContext = dbContext;
             _userManager = userManager;
@@ -50,7 +50,7 @@ namespace OnlineShopping.Controllers
             _config = config;
             _emailService = emailService;
             _smsService = smsService;
-            _firebaseService = firebaseService;
+            _cloudinaryService = cloudinaryService;
             _projectHelper = projectHelper;
             _hubContext = hubContext;
         }

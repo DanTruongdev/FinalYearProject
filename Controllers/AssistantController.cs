@@ -28,30 +28,34 @@ namespace OnlineShopping.Controllers
     {
         private readonly ApplicationDbContext _dbContext;
         private readonly UserManager<User> _userManager;
- 
         private readonly IProjectHelper _projectHelper;
-        private readonly IDropboxService _dropboxService;
+        private readonly ICloudinaryService _cloudinaryService;
 
-        public AssistantController( ApplicationDbContext dbContext, UserManager<User> userManager, IProjectHelper projectHelper, IDropboxService dropboxService)
+
+
+        public AssistantController( ApplicationDbContext dbContext, UserManager<User> userManager, IProjectHelper projectHelper, ICloudinaryService cloudinaryService)
         {
             _dbContext = dbContext;
             _userManager = userManager;
             _projectHelper = projectHelper;
-            _dropboxService = dropboxService;
+            _cloudinaryService = cloudinaryService;
         }
 
 
 
         [HttpPost("upload")]
-        public async Task<IActionResult> Upload([FromForm]List<IFormFile> files)
+        public async Task<IActionResult> Upload([FromForm] int id, [FromForm] List<IFormFile> files)
         {
+            var a = await _dbContext.FurnitureSpecificationAttachments.FindAsync(id);
             foreach (var file in files)
             {
-                return Ok(await _dropboxService.UploadAsync(file));
+                var b = _cloudinaryService.UploadFile(file);
+                a.Path = b;
+                _dbContext.Update(a);
+                await _dbContext.SaveChangesAsync();
+                return Ok(b);
             }
             return Ok();
-
-
         }
 
         //wood
@@ -391,7 +395,7 @@ namespace OnlineShopping.Controllers
                 MaterialId = m.MaterialId,
                 MaterialName = m.MaterialName,
                 MaterialPrice = m.MaterialPrice,
-                MaterialImage =  _dropboxService.GetDownloadLinkAsync(m.MaterialImage).Result,
+                MaterialImage =  _cloudinaryService.GetSharedUrl(m.MaterialImage),
                 Description = m.Description,
                 DefaultSuplierId = m.DefaultSuplierId,
                 Available = m.MaterialRepositories.Select(mr => new
@@ -414,7 +418,7 @@ namespace OnlineShopping.Controllers
                 MaterialId = m.MaterialId,
                 MaterialName = m.MaterialName,
                 MaterialPrice = m.MaterialPrice,
-                MaterialImage =  _dropboxService.GetDownloadLinkAsync(m.MaterialImage).Result,
+                MaterialImage =  _cloudinaryService.GetSharedUrl(m.MaterialImage),
                 Description = m.Description,
                 DefaultSuplierId = m.DefaultSuplierId,
                 Available = m.MaterialRepositories.Select(mr => new
@@ -445,7 +449,7 @@ namespace OnlineShopping.Controllers
                 MaterialPrice = userInput.MaterialPrice,
                 Description = userInput.Description.IsNullOrEmpty() ? "" : userInput.Description,
                 DefaultSuplierId = userInput.DefaultSuplierId,
-                MaterialImage = await _dropboxService.UploadAsync(userInput.UploadImage)
+                MaterialImage =  _cloudinaryService.UploadFile(userInput.UploadImage)
             };
          
            
@@ -461,7 +465,7 @@ namespace OnlineShopping.Controllers
                     MaterialName = newMaterial.MaterialName,
                     MaterialPrice = newMaterial.MaterialPrice,
                     Description = newMaterial.Description,
-                    MaterialImage = await _dropboxService.GetDownloadLinkAsync(newMaterial.MaterialImage),
+                    MaterialImage =  _cloudinaryService.GetSharedUrl(newMaterial.MaterialImage),
                     DefaultSuplierId = newMaterial.DefaultSuplierId
 
                 });
@@ -501,10 +505,10 @@ namespace OnlineShopping.Controllers
             materialExist.DefaultSuplierId = userInput.DefaultSuplierId.HasValue ? userInput.DefaultSuplierId.Value :  materialExist.DefaultSuplierId;
             if (userInput.UploadImage != null)
             {
-                var removeResult = await _dropboxService.DeleteFileAsync(materialExist.MaterialImage);
+                var removeResult =  _cloudinaryService.RemoveFile(materialExist.MaterialImage);
                 if(!removeResult) return StatusCode(StatusCodes.Status500InternalServerError,
                     new Response("Error", $"An error occur when updating material with id = {materialExist.MaterialId}"));
-                materialExist.MaterialImage = await _dropboxService.UploadAsync(userInput.UploadImage);
+                materialExist.MaterialImage =  _cloudinaryService.UploadFile(userInput.UploadImage);
             }
             try
             {
@@ -526,7 +530,7 @@ namespace OnlineShopping.Controllers
             if (materialExist == null) return NotFound($"The material with id = {materialId} was not found");
             if (!materialExist.MaterialImage.IsNullOrEmpty())
             {
-                var removeResult = await _dropboxService.DeleteFileAsync(materialExist.MaterialImage);
+                var removeResult =  _cloudinaryService.RemoveFile(materialExist.MaterialImage);
 
                 if (!removeResult) return StatusCode(StatusCodes.Status500InternalServerError,
                     new Response("Error", $"An error occur when removing material with id = {materialId}"));
@@ -568,7 +572,7 @@ namespace OnlineShopping.Controllers
                     Quantity = item.Quantity,
                     Note = item.Note.IsNullOrEmpty() ? "" : item.Note
                 }),
-                BillImage = _dropboxService.GetDownloadLinkAsync(i.BillImage).Result,
+                BillImage = _cloudinaryService.GetSharedUrl(i.BillImage),
                 CreationDate = i.CreationDate,
                 DeliveryDate = i.DeliveryDate,
                 Status = i.Status
@@ -661,7 +665,7 @@ namespace OnlineShopping.Controllers
             if (userInput.DeliveryDate.Date < importExist.CreationDate.Date) return BadRequest(new Response("Error", "Delivery date must be greater than or equal creation date"));
             importExist.DeliveryDate = userInput.DeliveryDate;
             importExist.Status = "Delivered";         
-            importExist.BillImage = await _dropboxService.UploadAsync(userInput.BillImage);
+            importExist.BillImage =  _cloudinaryService.UploadFile(userInput.BillImage);
             List<ImportDetail> importDetails = importExist.ImportDetails.ToList();
             //add material to repository
             foreach(var import in importDetails)
@@ -1526,7 +1530,7 @@ namespace OnlineShopping.Controllers
                 {                
                     foreach (var attachment in feedbackExist.Attachements)
                     {
-                        await _dropboxService.DeleteFileAsync(attachment.Path);
+                         _cloudinaryService.RemoveFile(attachment.Path);
                     }
                     feedbackExist.Attachements.Clear();
                 }
@@ -1639,12 +1643,12 @@ namespace OnlineShopping.Controllers
                 Images = w.Attachments.Where(a => a.Type.Equals("images")).Select( a => new
                 {
                     Name = a.AttachmentName,
-                    Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
+                    Path =  _cloudinaryService.GetSharedUrl(a.Path)
                 }),
                 Videos = w.Attachments.Where( a => a.Type.Equals("videos")).Select(async a => new
                 {
                     Name = a.AttachmentName,
-                    Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
+                    Path =  _cloudinaryService.GetSharedUrl(a.Path)
                 })
 
             }) ;
@@ -1666,7 +1670,7 @@ namespace OnlineShopping.Controllers
                PostTitle = p.Title,
                PosContent = p.Content,
                PosType = p.Type,
-               PostImage =  _dropboxService.GetDownloadLinkAsync(p.Image).Result,
+               PostImage =  _cloudinaryService.GetSharedUrl(p.Image),
                CreationDate = p.CreationDate,
                LatestUpdate = p.LatestUpdate == null ? p.CreationDate : p.LatestUpdate
             });
@@ -1688,7 +1692,7 @@ namespace OnlineShopping.Controllers
                 Title = userInput.Title,
                 Content = userInput.Content,
                 Type = userInput.Type,
-                Image = await _dropboxService.UploadAsync(userInput.Image),
+                Image =  _cloudinaryService.UploadFile(userInput.Image),
                 CreationDate = DateTime.Now,
                 LatestUpdate = DateTime.Now
             };
@@ -1703,7 +1707,7 @@ namespace OnlineShopping.Controllers
                     Title = newPost.Title,
                     Content = newPost.Content,
                     Type = newPost.Type,
-                    Image = await _dropboxService.GetDownloadLinkAsync(newPost.Image),
+                    Image =  _cloudinaryService.GetSharedUrl(newPost.Image),
                     CreationDate = newPost.CreationDate,
                     LatestUpdate = newPost.CreationDate
                 };
@@ -1729,7 +1733,7 @@ namespace OnlineShopping.Controllers
             postExist.Title = userInput.Title;
             postExist.Content = userInput.Content;
             postExist.Type = userInput.Type;
-            postExist.Image = await _dropboxService.UploadAsync(userInput.Image);
+            postExist.Image =  _cloudinaryService.UploadFile(userInput.Image);
             postExist.LatestUpdate = DateTime.Now;
 
             try
@@ -1743,7 +1747,7 @@ namespace OnlineShopping.Controllers
                     Title = postExist.Title,
                     Content = postExist.Content,
                     Type = postExist.Type,
-                    Image = await _dropboxService.GetDownloadLinkAsync(postExist.Image),
+                    Image =  _cloudinaryService.GetSharedUrl(postExist.Image),
                     CreationDate = postExist.CreationDate,
                     LatestUpdate = postExist.LatestUpdate
                 };

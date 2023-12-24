@@ -184,7 +184,7 @@ namespace OnlineShopping.Libraries.Services
             vnpay.AddRequestData("vnp_Version", VnPayService.VERSION);
             vnpay.AddRequestData("vnp_Command", "pay");
             vnpay.AddRequestData("vnp_TmnCode", vnp_TmnCode);
-            vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100000).ToString());
+            vnpay.AddRequestData("vnp_Amount", (order.TotalCost * 100).ToString());
             var payment = _dbContext.Payments.Find(typePayment);
             vnpay.AddRequestData("vnp_BankCode", payment.PaymentMethod);
             vnpay.AddRequestData("vnp_CreateDate", order.OrderDate.ToString("yyyyMMddHHmmss"));

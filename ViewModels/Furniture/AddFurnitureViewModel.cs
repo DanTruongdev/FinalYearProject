@@ -11,6 +11,7 @@ namespace OnlineShopping.ViewModels.Furniture
         [Required]
         [Range(1, int.MaxValue, ErrorMessage = "CategoryId must be greater than 0")]
         public int CategoryId { get; set; }
+        [Required]
         [Range(1, int.MaxValue, ErrorMessage = "CollectionId must be greater than 0")]
         public int? CollectionId { get; set; }
         [Required]

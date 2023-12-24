@@ -45,6 +45,10 @@
               "target": "Package",
               "version": "[34.0.2, )"
             },
+            "CloudinaryDotNet": {
+              "target": "Package",
+              "version": "[1.24.0, )"
+            },
             "Dropbox.Api": {
               "target": "Package",
               "version": "[6.37.0, )"

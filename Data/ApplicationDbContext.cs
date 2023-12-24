@@ -16,8 +16,8 @@ namespace OnlineShopping.Data
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
-            ChangeTracker.AutoDetectChangesEnabled = true;
-            ChangeTracker.LazyLoadingEnabled = true;
+            //ChangeTracker.AutoDetectChangesEnabled = true;
+            //ChangeTracker.LazyLoadingEnabled = true;
         }
 
         public DbSet<User> Users { get; set; }
@@ -64,7 +64,6 @@ namespace OnlineShopping.Data
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.EnableSensitiveDataLogging();
-
         }
 
         protected override void OnModelCreating(ModelBuilder builder)

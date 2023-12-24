@@ -29,8 +29,9 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 
 //For Entity Framework
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-     options.UseLazyLoadingProxies()
-     .UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+     options.UseLazyLoadingProxies().UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//     options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
 //For Identity Framework
 builder.Services.AddIdentity<User, IdentityRole>()
@@ -98,6 +99,9 @@ builder.Services.AddScoped<IFirebaseService, FirebaseService>();
 
 //Add Dropbox Service
 builder.Services.AddScoped<IDropboxService, DropboxService>();
+
+//Add Cloudinary Service
+builder.Services.AddScoped<ICloudinaryService, CloudiaryService>();
 
 //Add Project Helper
 builder.Services.AddScoped<IProjectHelper, ProjectHelper>();

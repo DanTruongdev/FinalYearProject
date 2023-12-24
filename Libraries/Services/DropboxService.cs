@@ -1,5 +1,6 @@
 ﻿using Dropbox.Api.Files;
 using Dropbox.Api;
+using Dropbox.Api.Auth;
 using Castle.Core.Internal;
 using OnlineShopping.Libraries.Models;
 
@@ -10,17 +11,19 @@ namespace OnlineShopping.Libraries.Services
         private static List<string> SUPPORTED_IMAGE_EXTENSION = new List<string>() { ".apng", ".bmp", ".gif", ".ico", ".cur", ".jpg", ".jpeg", ".jfif", ".pjpeg",
                                                                     ".pjp", ".png", ".svg", ".webp"};
         private static List<string> SUPPORTED_VIDEO_EXTENSION = new List<string>() { ".mp4", ".webm", ".ogg" };
-        private static string AccessToken = "";
 
         private readonly IConfiguration _configuration;
         public DropboxService(IConfiguration configuration)
         {
             _configuration = configuration;
         }
-         
+
+        
+
         public async Task<string> UploadAsync(IFormFile file)
         {
-            using (var dropbox = new DropboxClient(_configuration["DropBox:AccessToken"]))
+           
+            using (var dropbox = new DropboxClient(_configuration["Dropbox:AccessToken"]))
             {
                 var re = CheckFileExtension(file);
                 if (file != null && file.Length > 0 && CheckFileExtension(file))
@@ -29,7 +32,7 @@ namespace OnlineShopping.Libraries.Services
                     {
                         string folderName = ImageOrVideo(file);
                         if (folderName.IsNullOrEmpty()) throw new Exception();
-                        var fileName = Guid.NewGuid().ToString()+Path.GetExtension(file.FileName).ToLower();
+                        var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName).ToLower();
                         using (var fileStream = file.OpenReadStream())
                         {
 
@@ -45,7 +48,7 @@ namespace OnlineShopping.Libraries.Services
 
                 }
                 return "";
-              
+
             }
         }
         private async Task<FileMetadata> UploadFileAsync(DropboxClient dropbox, Stream fileStream, string folderName, string fileName)
@@ -60,59 +63,58 @@ namespace OnlineShopping.Libraries.Services
         }
         public async Task<bool> DeleteFileAsync(string filePath)
         {
-            using (var dropbox = new DropboxClient(_configuration["DropBox:AccessToken"]))
+
+            using (var dropbox = new DropboxClient(_configuration["Dropbox:AccessToken"]))
             {
                 try
                 {
                     await dropbox.Files.DeleteV2Async(filePath);
                     return true;
-            }
+                }
                 catch
                 {
-                return false;
+                    return false;
+                }
+
             }
-
         }
-        }
-       
 
-        public  async Task<string> GetDownloadLinkAsync(string filePath)
+        public async Task<string> GetDownloadLinkAsync(string filePath)
         {
-            using (var dropbox = new DropboxClient(_configuration["DropBox:AccessToken"]))
+
+            using (var dropbox = new DropboxClient(_configuration["Dropbox:AccessToken"]))
             {
                 try
                 {
-                    var sharedLink = await dropbox.Sharing.CreateSharedLinkWithSettingsAsync(filePath);                 
-                    var downloadLink = sharedLink.Url.Replace("www.dropbox.com", "dl.dropboxusercontent.com");
-                    return downloadLink;
+
+                    var sharedLinks = await dropbox.Sharing.ListSharedLinksAsync(filePath);
+                    if (sharedLinks.Links.Any())
+                    {
+                        var shareLink = sharedLinks.Links.First().Url;
+                        var downloadLink = shareLink.Replace("www.dropbox.com", "dl.dropboxusercontent.com");
+                        return downloadLink;
+                    }
+                    else
+                    {
+                        var sharedLink = await dropbox.Sharing.CreateSharedLinkWithSettingsAsync(filePath);
+                        var downloadLink = sharedLink.Url.Replace("www.dropbox.com", "dl.dropboxusercontent.com");
+                        return downloadLink;
+                    }
+
                 }
                 catch
                 {
-                    try
-                    {
-                        var sharedLinks = await dropbox.Sharing.ListSharedLinksAsync(filePath);
-                        if (sharedLinks.Links.Any())
-                        {
-                            var shareLink = sharedLinks.Links.First().Url;
-                            var downloadLink = shareLink.Replace("www.dropbox.com", "dl.dropboxusercontent.com");
-                            return downloadLink;
-                        }
-                    }
-                    catch
-                    {
-                        return "";
-                    }
                     return "";
                 }
 
-            }          
+            }
         }
 
         public bool CheckFileExtension(List<IFormFile> files)
         {
             foreach (IFormFile file in files)
             {
-               
+
                 if (ImageOrVideo(file).IsNullOrEmpty()) return false;
             }
             return true;

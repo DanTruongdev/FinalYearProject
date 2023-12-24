@@ -21,6 +21,8 @@ using OnlineShopping.ViewModels.Furniture;
 using OnlineShopping.ViewModels.Warranty;
 using OnlineShopping.Data;
 using Castle.Core;
+using System.Web.Http.Description;
+using System.Net.Mail;
 
 namespace OnlineShopping.Controllers
 {
@@ -32,14 +34,14 @@ namespace OnlineShopping.Controllers
         private readonly UserManager<User> _userManager;
         private readonly IConfiguration _config;
         private readonly IProjectHelper _projectHelper;
-        private readonly IDropboxService _dropboxService;
-        public CustomerController(ApplicationDbContext context, UserManager<User> userManager, IConfiguration config, IProjectHelper projectHelper, IDropboxService dropboxService)
+        private readonly ICloudinaryService _cloudinaryService;
+        public CustomerController(ApplicationDbContext context, UserManager<User> userManager, IConfiguration config, IProjectHelper projectHelper, ICloudinaryService cloudinaryService)
         {
             _dbContext = context;
             _userManager = userManager;
             _config = config;
             _projectHelper = projectHelper;
-            _dropboxService = dropboxService;
+            _cloudinaryService = cloudinaryService;
         }
 
 
@@ -58,8 +60,7 @@ namespace OnlineShopping.Controllers
                 userWishlist = loggedInUser.WishList == null ? new List<WishListDetail>() : loggedInUser.WishList.WishListDetails.ToList();
             }
 
-            var furnitures = await _dbContext.Furnitures.ToListAsync();
-            var response = furnitures.Select( f => new
+            var furnitures = await _dbContext.Furnitures.Include(f => f.FurnitureSpecifications).Include(f => f.Collection).Include(f => f.Category).Include(f => f.Label).AsNoTracking().Select(f => new
             {
                 FurnitureId = f.FurnitureId,
                 FurnitureName = f.FurnitureName,
@@ -68,20 +69,36 @@ namespace OnlineShopping.Controllers
                 Label = f.Label == null ? string.Empty : f.Label.LabelName,
                 CategoryId = f.CategoryId,
                 Category = f.Category.CategoryName,
-                //Available = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Sum(fs => fs.FurnitureRepositories.Sum(fr => fr.Available)) : 0,
                 AppropriateRoom = f.AppopriateRoom,
-                Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
-                Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
-                         _dropboxService.GetDownloadLinkAsync(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path).Result
-                        : String.Empty,
+                Price = f.FurnitureSpecifications.Any() ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
+                Image = f.FurnitureSpecifications.Any(fs => fs.Attachments.Any()) ? _cloudinaryService.GetSharedUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path) : "",
                 CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
                 Collection = f.Collection.CollectionName,
                 isLike = isLoggedIn && userWishlist.FirstOrDefault(w => w.FurnitureId == f.FurnitureId) != null ? true : false
-            });
+            }).ToListAsync();
 
-            return Ok(response);
+            //var response = furnitures.Select( async f => new
+            //{
+            //    FurnitureId = f.FurnitureId,
+            //    FurnitureName = f.FurnitureName,
+            //    VoteStar = f.VoteStar,
+            //    Sold = f.Sold,
+            //    Label = f.Label == null ? string.Empty : f.Label.LabelName,
+            //    CategoryId = f.CategoryId,
+            //    Category = f.Category.CategoryName,
+            //    AppropriateRoom = f.AppopriateRoom,
+            //    Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
+            //    //Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
+            //    //         _dropboxService.GetDownloadLinkAsync(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path).Result
+            //    //        : String.Empty,
+            //    Image = f.FurnitureSpecifications.IsNullOrEmpty() ? "" : await GetImageById(f.FurnitureSpecifications.First().FurnitureSpecificationId, attachments),
+            //    CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
+            //    Collection = f.Collection.CollectionName,
+            //    //isLike = isLoggedIn && userWishlist.FirstOrDefault(w => w.FurnitureId == f.FurnitureId) != null ? true : false
+            //});
+
+            return Ok(furnitures);
         }
-
 
         [HttpGet("furnitures/{id}")]
 
@@ -115,12 +132,12 @@ namespace OnlineShopping.Controllers
                     Images = fs.Attachments.Where(a => a.Type.Equals("images")).Select( a => new
                     {
                         AttachmentName = a.AttachmentName,
-                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
+                        Path = _cloudinaryService.GetSharedUrl(a.Path)
                     }),
                     Videos = fs.Attachments.Where(a => a.Type.Equals("videos")).Select( a => new
                     {
                         AttachmentName = a.AttachmentName,
-                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
+                        Path = _cloudinaryService.GetSharedUrl(a.Path)
                     }),
                     Feedbacks = fs.Feedbacks.Select(fb => new
                     {
@@ -155,7 +172,7 @@ namespace OnlineShopping.Controllers
                 AppropriateRoom = f.AppopriateRoom,
                 Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
                 Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
-                          _dropboxService.GetDownloadLinkAsync(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path).Result
+                          _cloudinaryService.GetSharedUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
                         : String.Empty,
                 CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
                 Collection = f.Collection.CollectionName
@@ -187,7 +204,7 @@ namespace OnlineShopping.Controllers
                 AppropriateRoom = f.AppopriateRoom,
                 Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
                 Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
-                          _dropboxService.GetDownloadLinkAsync(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path).Result
+                          _cloudinaryService.GetSharedUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
                         : String.Empty,
                 CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
                 Collection = f.Collection.CollectionName
@@ -357,7 +374,7 @@ namespace OnlineShopping.Controllers
                 AppropriateRoom = f.AppopriateRoom,
                 Price = f.FurnitureSpecifications.Count > 0 ? f.FurnitureSpecifications.Min(fs => fs.Price) : 0,
                 Image = f.FurnitureSpecifications.Count > 0 && f.FurnitureSpecifications.FirstOrDefault().Attachments.Count > 0 ?
-                         _dropboxService.GetDownloadLinkAsync(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path).Result
+                         _cloudinaryService.GetSharedUrl(f.FurnitureSpecifications.FirstOrDefault().Attachments.FirstOrDefault().Path)
                         : String.Empty,
                 CollectionId = f.CollectionId.HasValue ? f.CollectionId.Value.ToString() : "None",
                 Collection = f.Collection.CollectionName
@@ -429,7 +446,7 @@ namespace OnlineShopping.Controllers
                 FurnitureName = orderFurniture.Furniture.FurnitureName,
                 FurnitureSpecificationId = furnitureSpecificationId,
                 FurnitureSpecificationName = orderFurniture.FurnitureSpecificationName,
-                FurnitureSpecificationImage = orderFurniture.Attachments.IsNullOrEmpty() ? "" : await _dropboxService.GetDownloadLinkAsync(orderFurniture.Attachments.First().Path),
+                FurnitureSpecificationImage = orderFurniture.Attachments.IsNullOrEmpty() ? "" : _cloudinaryService.GetSharedUrl(orderFurniture.Attachments.First().Path),
                 Quantity = Quantity,
 
                 TotalCost = Math.Round(orderFurniture.Price * Quantity, 2)
@@ -883,7 +900,7 @@ namespace OnlineShopping.Controllers
                 FurnitureName = fb.FurnitureSpecification.Furniture.FurnitureName,
                 FeedbackImages = fb.Attachements.Count > 0 ? fb.Attachements.Select( a => new
                 {
-                    url =  _dropboxService.GetDownloadLinkAsync(a.Path).Result,
+                    url =  _cloudinaryService.GetSharedUrl(a.Path),
                     type = a.Type
                 }) : null,
                 Content = fb.Content,
@@ -974,8 +991,8 @@ namespace OnlineShopping.Controllers
                     {
                         FeedbackId = addedFeedback.FeedbackId,
                         AttachmentName = file.FileName,
-                        Path = await _dropboxService.UploadAsync(file),
-                        Type = _dropboxService.ImageOrVideo(file)
+                        Path = _cloudinaryService.UploadFile(file),
+                        Type = _cloudinaryService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newFeedbackAttachment);
                 }
@@ -1045,7 +1062,7 @@ namespace OnlineShopping.Controllers
                 {
                     foreach (var attachment in feedbackExist.Attachements)
                     {
-                        await _dropboxService.DeleteFileAsync(attachment.Path);
+                        _cloudinaryService.RemoveFile(attachment.Path);
                         _dbContext.Remove(attachment);
                     }
                     await _dbContext.SaveChangesAsync();
@@ -1057,8 +1074,8 @@ namespace OnlineShopping.Controllers
                     {
                         FeedbackId = feedbackExist.FeedbackId,
                         AttachmentName = file.FileName,
-                        Path = await _dropboxService.UploadAsync(file),
-                        Type = _dropboxService.ImageOrVideo(file)
+                        Path =  _cloudinaryService.UploadFile(file),
+                        Type = _cloudinaryService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newFeedbackAttachment);
                 }
@@ -1111,12 +1128,12 @@ namespace OnlineShopping.Controllers
                     Images = cf.Attachments.Where(a => a.Type.Equals("images")).Select( a => new
                     {
                         AttachmentName = a.AttachmentName,
-                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
+                        Path = _cloudinaryService.GetSharedUrl(a.Path)
                     }),
                     Videos = cf.Attachments.Where(a => a.Type.Equals("videos")).Select( a => new
                     {
                         AttachmentName = a.AttachmentName,
-                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
+                        Path =  _cloudinaryService.GetSharedUrl(a.Path)
                     }),
                     Result = new
                     {
@@ -1184,8 +1201,8 @@ namespace OnlineShopping.Controllers
                     {
                         CustomizeFurnitureId = newCustomizeFurniture.CustomizeFurnitureId,
                         AttachmentName = file.FileName,
-                        Path = await _dropboxService.UploadAsync(file),
-                        Type = _dropboxService.ImageOrVideo(file)
+                        Path = _cloudinaryService.UploadFile(file),
+                        Type = _cloudinaryService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newAttachment);
                 }
@@ -1222,7 +1239,7 @@ namespace OnlineShopping.Controllers
             {
                 foreach (var attachment in customizeFurniture.Attachments)
                 {
-                    bool removeResult = await _dropboxService.DeleteFileAsync(attachment.Path);
+                    bool removeResult = _cloudinaryService.RemoveFile(attachment.Path);
                     if (removeResult) _dbContext.Remove(attachment);
                 };
                 await _dbContext.SaveChangesAsync();
@@ -1233,8 +1250,8 @@ namespace OnlineShopping.Controllers
                     {
                         CustomizeFurnitureId = customizeFurniture.CustomizeFurnitureId,
                         AttachmentName = file.FileName,
-                        Path = await _dropboxService.UploadAsync(file),
-                        Type = _dropboxService.ImageOrVideo(file)
+                        Path =  _cloudinaryService.UploadFile(file),
+                        Type = _cloudinaryService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newAttachment);
                 }
@@ -1303,12 +1320,12 @@ namespace OnlineShopping.Controllers
                     Images = w.Attachments.Where(a => a.Type.Equals("images")).Select( a => new
                     {
                         FileName = a.AttachmentName,
-                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
+                        Path = _cloudinaryService.GetSharedUrl(a.Path)
                     }),
                     Videos = w.Attachments.Where(a => a.Type.Equals("videos")).Select( a => new
                     {
                         FileName = a.AttachmentName,
-                        Path =  _dropboxService.GetDownloadLinkAsync(a.Path).Result
+                        Path = _cloudinaryService.GetSharedUrl(a.Path)
                     })
                 },
                 Status = w.Status
@@ -1355,8 +1372,8 @@ namespace OnlineShopping.Controllers
                     {
                         WarrantyId = newWarranty.WarrantyId,
                         AttachmentName = file.FileName,
-                        Path = await _dropboxService.UploadAsync(file),
-                        Type = _dropboxService.ImageOrVideo(file)
+                        Path = _cloudinaryService.UploadFile(file),
+                        Type = _cloudinaryService.ImageOrVideo(file)
                     };
                     await _dbContext.AddAsync(newAttachment);
                 }
@@ -1387,7 +1404,7 @@ namespace OnlineShopping.Controllers
                 {
                     foreach (var attachment in editWarranty.Attachments)
                     {
-                        var removeResult = await _dropboxService.DeleteFileAsync(attachment.Path);
+                        var removeResult =  _cloudinaryService.RemoveFile(attachment.Path);
                         if (removeResult) _dbContext.Remove(attachment);
                     };
                 }
@@ -1398,8 +1415,8 @@ namespace OnlineShopping.Controllers
                     {
                         WarrantyId = editWarranty.WarrantyId,
                         AttachmentName = file.FileName,
-                        Path = await _dropboxService.UploadAsync(file),
-                        Type = _dropboxService.ImageOrVideo(file)
+                        Path = _cloudinaryService.UploadFile(file),
+                        Type = _cloudinaryService.ImageOrVideo(file)
                     };
                     _dbContext.Update(newAttachment);
                 }
@@ -1426,7 +1443,7 @@ namespace OnlineShopping.Controllers
                 {
                     foreach (var attachment in removeWarranty.Attachments)
                     {
-                        var removeResult = await _dropboxService.DeleteFileAsync(attachment.Path);
+                        var removeResult = _cloudinaryService.RemoveFile(attachment.Path);
                         _dbContext.Remove(attachment);
                     };
                     removeWarranty.Attachments.Clear();
