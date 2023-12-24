@@ -325,13 +325,13 @@ namespace OnlineShopping.Controllers
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return NotFound("Logged in user not found ");
             var user = await _userManager.FindByEmailAsync(email);
-            var announcement = user.Announcements.OrderByDescending(a => a.CreationDate).Select(a => new
+            var announcement = await _dbContext.Announcements.Where(a => a.UserId == user.Id).OrderByDescending(a => a.CreationDate).Select(a => new
             {
                 Title = a.Title,
                 Content = a.Content,
                 Date = a.CreationDate
 
-            }).ToList();
+            }).ToListAsync();
             return Ok(announcement);
         }
 

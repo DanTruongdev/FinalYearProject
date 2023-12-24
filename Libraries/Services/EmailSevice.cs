@@ -34,12 +34,12 @@ namespace OnlineShopping.Libraries.Services
             {
                 client.Connect(_emailConfig.SmtpServer, _emailConfig.Port, true);
                 client.AuthenticationMechanisms.Remove("XOAUTH2");
-                client.Authenticate(_emailConfig.UserName, _emailConfig.Password);
+                client.Authenticate(_emailConfig.Username, _emailConfig.Password);
                 client.Send(mailMessage);
             }
             catch
             {
-                //log an error message or throw an exception or both.
+                
                 throw;
             }
             finally

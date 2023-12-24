@@ -54,8 +54,16 @@ namespace OnlineShopping.Controllers
             _projectHelper = projectHelper;
             _hubContext = hubContext;
         }
-           
-     
+
+        [HttpPost("testmail")]
+        public async Task<IActionResult> Test()
+        {
+            var message = new Message(new string[] { "olgalushpo@ps372.org" },
+                "Confirmation email link", $"Please click to the following Url to verify your email:");
+            _emailService.SendEmail(message);
+            return Ok();
+        }
+
         [HttpPost("create-account/{roleId}")]
         public async Task<IActionResult> RegisterCustomerAccount([FromBody] RegisterCustomerAccount userInfor, [FromRoute] string roleId)
         {
